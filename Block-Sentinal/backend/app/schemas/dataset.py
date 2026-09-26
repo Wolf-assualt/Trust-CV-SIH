@@ -65,6 +65,9 @@ class BatchVerificationResponse(BaseModel):
     manifest_root: str
     tampered_samples: List[str] = Field(default_factory=list)
     signature_valid: Optional[bool] = None
+    label_quality_score: Optional[float] = None
+    noisy_samples: List[Dict[str, Any]] = Field(default_factory=list)
+    cleanlab_analysis: Optional[Dict[str, Any]] = None
 
 
 # Retained for ORM entity compatibility

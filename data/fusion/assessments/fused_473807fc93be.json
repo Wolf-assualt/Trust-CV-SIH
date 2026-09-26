@@ -1,0 +1,112 @@
+{
+  "assessment_id": "fused_473807fc93be",
+  "target_entity_id": "8d8dfe49-f44f-4387-a098-5b137f72a0c3",
+  "overall_status": "UNDER_REVIEW",
+  "verdict": "UNDER_REVIEW",
+  "risk_level": "HIGH",
+  "risk_score": 0.5,
+  "confidence": 0.16,
+  "confidence_score": 0.16,
+  "action": "REVIEW",
+  "coverage": {
+    "sources_checked": [
+      "DATA_INTEGRITY"
+    ],
+    "coverage_ratio": 0.2,
+    "missing_sources": [
+      "MODEL_IDENTITY",
+      "BEHAVIOURAL_FINGERPRINT",
+      "INFERENCE_DNA",
+      "DISTRIBUTION_SHIFT"
+    ]
+  },
+  "findings": [],
+  "correlated_findings": [],
+  "contributors": [
+    "UNKNOWN"
+  ],
+  "recommended_actions": [
+    "FLAG for security officer and ML engineer secondary review."
+  ],
+  "limitations": [
+    "Limited verification scope (MINIMAL): 1/5 evidence sources checked.",
+    "Audit coverage ratio: 20%.",
+    "Offline deterministic assurance without reliance on third-party cloud trust oracles.",
+    "Unchecked evidence sources: MODEL_IDENTITY, BEHAVIOURAL_FINGERPRINT, INFERENCE_DNA, DISTRIBUTION_SHIFT."
+  ],
+  "explanation": "Partial verification (MINIMAL) \u2014 evaluated 1/5 sources",
+  "raw_evidence": [
+    {
+      "evidence_id": "integrity_145f331f-7252-4dea-a37e-036f3afe1f32",
+      "source": "DATA_INTEGRITY",
+      "domain": null,
+      "severity": "LOW",
+      "metric_value": 0.5,
+      "description": "Perceptual near-duplicate cluster of 2 images detected (avg Hamming distance 0.0, threshold 4).",
+      "subject_id": "8d8dfe49-f44f-4387-a098-5b137f72a0c3",
+      "related_model_id": null,
+      "related_dataset_id": "8d8dfe49-f44f-4387-a098-5b137f72a0c3",
+      "evidence_digest": null,
+      "confidence": null,
+      "evidence_type": null,
+      "metadata": {
+        "check_type": "NEAR_DUPLICATE",
+        "sample_ids": [
+          "sample_1.jpg",
+          "sample_1_1.jpg"
+        ],
+        "contributor": "UNKNOWN"
+      }
+    },
+    {
+      "evidence_id": "integrity_91d9080b-868f-43d3-8f83-f8a18b992586",
+      "source": "DATA_INTEGRITY",
+      "domain": null,
+      "severity": "HIGH",
+      "metric_value": 0.5,
+      "description": "Zero-variance flat image detected (variance: 0.0000). Image appears to be solid color or sensor blackout.",
+      "subject_id": "8d8dfe49-f44f-4387-a098-5b137f72a0c3",
+      "related_model_id": null,
+      "related_dataset_id": "8d8dfe49-f44f-4387-a098-5b137f72a0c3",
+      "evidence_digest": null,
+      "confidence": null,
+      "evidence_type": null,
+      "metadata": {
+        "check_type": "QUALITY_ANOMALY",
+        "sample_ids": [
+          "sample_1.jpg"
+        ],
+        "contributor": "UNKNOWN"
+      }
+    },
+    {
+      "evidence_id": "integrity_94a27008-a280-4314-9cfd-21551bb04e5c",
+      "source": "DATA_INTEGRITY",
+      "domain": null,
+      "severity": "HIGH",
+      "metric_value": 0.5,
+      "description": "Zero-variance flat image detected (variance: 0.0000). Image appears to be solid color or sensor blackout.",
+      "subject_id": "8d8dfe49-f44f-4387-a098-5b137f72a0c3",
+      "related_model_id": null,
+      "related_dataset_id": "8d8dfe49-f44f-4387-a098-5b137f72a0c3",
+      "evidence_digest": null,
+      "confidence": null,
+      "evidence_type": null,
+      "metadata": {
+        "check_type": "QUALITY_ANOMALY",
+        "sample_ids": [
+          "sample_1_1.jpg"
+        ],
+        "contributor": "UNKNOWN"
+      }
+    }
+  ],
+  "decisive_evidence": [],
+  "hard_veto_triggered": false,
+  "veto_reasons": [],
+  "signature": "d604745381d83a0ff40232c81830baa490e833319a1077412a41ef802ebc42a2847f9713d3635c2c6514166c5f7a46d51fecbd2047b7afaccccf1039d0e0c706",
+  "assessment_digest": "ebbdc76e75ac063f60e30492fea28166c7e74636e26d985c13fa686e7b0f86f0",
+  "scope": "MINIMAL",
+  "evidence_completeness": "MINIMAL",
+  "created_at": "2026-09-26T20:26:21.294203Z"
+}

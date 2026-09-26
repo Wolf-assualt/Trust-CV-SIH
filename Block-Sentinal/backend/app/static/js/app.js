@@ -436,6 +436,9 @@ document.addEventListener('DOMContentLoaded', () => {
         AppState.selectedFiles.forEach(file => {
           formData.append('files', file);
         });
+        if (AppState.baselineFile) {
+          formData.append('baseline_file', AppState.baselineFile);
+        }
 
         scanSession = api ? await api.uploadDataset(formData) : await window.TrustCvApi.uploadDataset(formData);
         if (!scanSession || !scanSession.scan_id) {
@@ -1360,6 +1363,35 @@ if (backendStage === 'EVIDENCE_FUSION' || backendStage.match(/^REPORT|COMPLETED$
     });
     inputFiles.addEventListener('change', (e) => {
       handleFileSelection(e.target.files);
+    });
+  }
+
+  const btnSelectSingle = document.getElementById('btn-select-single');
+  const btnSelectBaseline = document.getElementById('btn-select-baseline');
+  const inputSingle = document.getElementById('input-single-upload');
+  const inputBaseline = document.getElementById('input-baseline-upload');
+
+  if (btnSelectSingle && inputSingle) {
+    btnSelectSingle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      inputSingle.click();
+    });
+    inputSingle.addEventListener('change', (e) => {
+      handleFileSelection(e.target.files);
+    });
+  }
+
+  if (btnSelectBaseline && inputBaseline) {
+    btnSelectBaseline.addEventListener('click', (e) => {
+      e.stopPropagation();
+      inputBaseline.click();
+    });
+    inputBaseline.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        AppState.baselineFile = e.target.files[0];
+        btnSelectBaseline.textContent = `Baseline: ${e.target.files[0].name.substring(0, 12)}…`;
+        btnSelectBaseline.style.borderColor = 'var(--accent-cyan)';
+      }
     });
   }
 

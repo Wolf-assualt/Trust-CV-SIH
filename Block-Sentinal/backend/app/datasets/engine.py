@@ -231,6 +231,11 @@ class DatasetIngestionEngine:
             and (signature_valid is not False)
         )
 
+        # 3. Cleanlab Confident Learning label quality scoring and anomaly detection
+        cleanlab_result = self.analyze_label_quality(manifest.samples)
+        label_quality_score = cleanlab_result.get("overall_score")
+        noisy_samples = cleanlab_result.get("noisy_samples", [])
+
         return BatchVerificationResponse(
             batch_id=batch_id,
             valid=is_valid,
@@ -238,7 +243,139 @@ class DatasetIngestionEngine:
             manifest_root=manifest.merkle_root,
             tampered_samples=tampered_samples,
             signature_valid=signature_valid,
+            label_quality_score=label_quality_score,
+            noisy_samples=noisy_samples,
+            cleanlab_analysis=cleanlab_result,
         )
+
+    def analyze_label_quality(self, samples: List) -> dict:
+        """Score label quality and identify noisy/anomalous samples using Cleanlab confident learning."""
+        if not samples:
+            return {"overall_score": 1.0, "noisy_samples": [], "sample_count": 0, "status": "NO_SAMPLES"}
+
+        # Resolve primary labels
+        sample_entries = []
+        label_set = set()
+        for s in samples:
+            lbl = None
+            if s.labels:
+                first = s.labels[0]
+                if isinstance(first, dict):
+                    for k in ("class", "category", "class_id", "spectral_band"):
+                        if k in first and first[k] is not None:
+                            lbl = str(first[k])
+                            break
+            if not lbl and s.metadata and "class" in s.metadata:
+                lbl = str(s.metadata["class"])
+            if not lbl:
+                p = Path(s.file_path)
+                if p.parent.name and p.parent.name not in (".", "images", "data", "uploads"):
+                    lbl = p.parent.name
+
+            if lbl:
+                label_set.add(lbl)
+                sample_entries.append((s, lbl))
+
+        if len(label_set) < 2 or len(sample_entries) < 2:
+            return {
+                "overall_score": 1.0,
+                "noisy_samples": [],
+                "sample_count": len(samples),
+                "status": "INSUFFICIENT_LABELED_DATA",
+            }
+
+        label_to_idx = {l: i for i, l in enumerate(sorted(label_set))}
+        idx_to_label = {i: l for l, i in label_to_idx.items()}
+        features_list = []
+        labels_list = []
+        valid_samples = []
+
+        from PIL import Image
+        import numpy as np
+
+        for s, lbl in sample_entries:
+            img_path = Path(s.file_path)
+            feat = None
+            if img_path.is_file():
+                try:
+                    with Image.open(img_path) as img:
+                        thumb = img.convert("L").resize((16, 16))
+                        feat = np.array(thumb, dtype=np.float32).flatten() / 255.0
+                except Exception:
+                    feat = None
+            if feat is None:
+                try:
+                    h_bytes = bytes.fromhex(s.sha256_hash)[:32]
+                    feat = np.frombuffer(h_bytes, dtype=np.uint8).astype(np.float32) / 255.0
+                    feat = np.pad(feat, (0, 256 - len(feat)), mode='wrap')
+                except Exception:
+                    feat = np.zeros(256, dtype=np.float32)
+
+            features_list.append(feat)
+            labels_list.append(label_to_idx[lbl])
+            valid_samples.append((s, lbl))
+
+        if len(valid_samples) < 2 or len(set(labels_list)) < 2:
+            return {
+                "overall_score": 1.0,
+                "noisy_samples": [],
+                "sample_count": len(samples),
+                "status": "INSUFFICIENT_FEATURES",
+            }
+
+        try:
+            import cleanlab
+            from cleanlab.filter import find_label_issues
+            from cleanlab.rank import get_label_quality_scores
+            from sklearn.neighbors import KNeighborsClassifier
+
+            X = np.array(features_list)
+            y = np.array(labels_list)
+
+            class_counts = np.bincount(y)
+            min_count = int(np.min(class_counts[class_counts > 0]))
+            k = max(1, min(3, min_count))
+
+            clf = KNeighborsClassifier(n_neighbors=k)
+            clf.fit(X, y)
+            probs = clf.predict_proba(X)
+            probs = np.clip(probs, 1e-4, 1.0 - 1e-4)
+            probs = probs / probs.sum(axis=1, keepdims=True)
+
+            quality_scores = get_label_quality_scores(labels=y, pred_probs=probs)
+            label_issues = find_label_issues(labels=y, pred_probs=probs)
+
+            noisy = []
+            for i, (is_issue, score) in enumerate(zip(label_issues, quality_scores)):
+                sample, given_lbl = valid_samples[i]
+                pred_idx = int(np.argmax(probs[i]))
+                suggested_lbl = idx_to_label.get(pred_idx, "Unknown")
+                if is_issue or score < 0.50:
+                    noisy.append({
+                        "sample_id": sample.sample_id,
+                        "file_path": sample.file_path,
+                        "given_label": given_lbl,
+                        "suggested_label": suggested_lbl,
+                        "quality_score": round(float(score), 4),
+                        "is_issue": bool(is_issue),
+                    })
+
+            overall_score = round(float(np.mean(quality_scores)), 4) if len(quality_scores) > 0 else 1.0
+
+            return {
+                "overall_score": overall_score,
+                "noisy_samples": noisy,
+                "total_scored": len(valid_samples),
+                "issues_count": len(noisy),
+                "status": "COMPLETED",
+            }
+        except Exception as e:
+            return {
+                "overall_score": 1.0,
+                "noisy_samples": [],
+                "sample_count": len(samples),
+                "status": f"CLEANLAB_ERROR: {str(e)}",
+            }
 
     def register_batch_to_database(
         self,

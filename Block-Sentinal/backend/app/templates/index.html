@@ -152,7 +152,9 @@
       </div>
 
       <!-- Hidden Native File & Folder Inputs -->
-      <input type="file" id="input-files-upload" multiple accept=".tif,.tiff,.png,.jpg,.jpeg,.json,.txt" style="display: none;">
+      <input type="file" id="input-files-upload" multiple accept=".tif,.tiff,.png,.jpg,.jpeg,.json,.txt,.mp4,.avi,.mov,.mkv,.webm" style="display: none;">
+      <input type="file" id="input-single-upload" accept=".tif,.tiff,.png,.jpg,.jpeg,.mp4,.avi,.mov,.mkv,.webm" style="display: none;">
+      <input type="file" id="input-baseline-upload" accept=".json,.bin,.sig,.txt" style="display: none;">
       <input type="file" id="input-folder-upload" webkitdirectory directory multiple style="display: none;">
 
       <!-- Launch Details Grid -->
@@ -163,9 +165,9 @@
           <div class="panel-header">
             <span class="panel-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              Earth Observation Multi-Spectral Payload
+              Earth Observation & Computer Vision Payload
             </span>
-            <span class="badge-tag" id="badge-dataset-format" style="background:var(--bg-surface); color:var(--accent-cyan); font-size:10px;">BIGEARTHNET-S2</span>
+            <span class="badge-tag" id="badge-dataset-format" style="background:var(--bg-surface); color:var(--accent-cyan); font-size:10px;">STANDALONE / BATCH</span>
           </div>
 
           <!-- Real Interactive Dropzone -->
@@ -173,17 +175,25 @@
             <div class="dropzone-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             </div>
-            <h3 class="dropzone-title" id="dropzone-title">Drop BigEarthNet-S2 Patch Folder or GeoTIFF Bands</h3>
-            <p class="dropzone-subtitle" id="dropzone-subtitle">Drag and drop files here, or use the selection controls below</p>
+            <h3 class="dropzone-title" id="dropzone-title">Drop Single Image/Video, Batch Folder, or Zip</h3>
+            <p class="dropzone-subtitle" id="dropzone-subtitle">Single file assurance check with optional baseline or multi-spectral folder ingestion</p>
             
-            <div style="display: flex; gap: 0.75rem; justify-content: center; margin-top: 1rem;">
-              <button type="button" class="btn btn-primary" id="btn-select-folder" style="font-size: 11px; padding: 0.5rem 1rem;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;margin-right:4px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                Select Patch Folder
+            <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-primary" id="btn-select-single" style="font-size: 11px; padding: 0.5rem 0.8rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Single Image/Video
               </button>
-              <button type="button" class="btn btn-secondary" id="btn-select-files" style="font-size: 11px; padding: 0.5rem 1rem;">
+              <button type="button" class="btn btn-secondary" id="btn-select-baseline" style="font-size: 11px; padding: 0.5rem 0.8rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;margin-right:4px;"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+                + Reference Baseline
+              </button>
+              <button type="button" class="btn btn-secondary" id="btn-select-folder" style="font-size: 11px; padding: 0.5rem 0.8rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;margin-right:4px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Select Folder
+              </button>
+              <button type="button" class="btn btn-secondary" id="btn-select-files" style="font-size: 11px; padding: 0.5rem 0.8rem;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                Select 12 Band Files (.tif)
+                Select Band Files
               </button>
             </div>
           </div>

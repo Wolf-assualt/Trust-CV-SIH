@@ -196,7 +196,7 @@ export const AnalystDecisionPanel: React.FC = () => {
           <span>entity_id: {latest.entity_id}</span>
           <span>scan_id: {latest.scan_id ?? 'N/A'}</span>
           <span>event hash: {latest.current_hash}</span>
-          <span>signature: {latest.signature ? 'PRESENT (ECDSA SECP256R1)' : 'ABSENT'}</span>
+          <span>signature: {latest.signature ? 'PRESENT (Ed25519)' : 'ABSENT'}</span>
           <span>timestamp: {latest.timestamp ?? 'N/A'}</span>
         </div>
       ) : (

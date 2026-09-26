@@ -740,7 +740,7 @@ class TrustCVGraph {
               <tr><td>Node Identifier:</td><td><code>${escapeHtml(node.id)}</code></td></tr>
               <tr><td>Assurance Status:</td><td><span class="badge-tag badge-health-ok">${statusTag}</span></td></tr>
               <tr><td>Canonical Seal:</td><td><code>RFC 8785 JSON SHA-256</code></td></tr>
-              <tr><td>Digital Signature:</td><td><code>ECDSA SECP256R1 (Air-Gapped Local CA)</code></td></tr>
+              <tr><td>Digital Signature:</td><td><code>Ed25519 (Air-Gapped Local CA)</code></td></tr>
             </table>
           </div>
           <div class="telemetry-box">

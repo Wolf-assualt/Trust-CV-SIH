@@ -90,24 +90,25 @@ def list_assurance_reports() -> ResponseEnvelope[List[AssuranceReport]]:
 @router.get("/{report_id}/export")
 def get_export_report(
     report_id: str,
-    format: ReportFormat = Query(ReportFormat.PDF, description="Desired export format (PDF, HTML, MARKDOWN, JSON_MANIFEST)"),
+    format: str = Query("PDF", description="Desired export format (PDF, HTML, MARKDOWN, JSON_MANIFEST)"),
 ):
     """Stream an exported report directly (PDF binary or formatted text)."""
     report = default_report_engine.get_report(report_id)
     if not report:
         raise HTTPException(status_code=404, detail=f"Assurance report '{report_id}' not found.")
 
-    if format == ReportFormat.PDF:
+    fmt_upper = (format.value if hasattr(format, "value") else str(format)).upper()
+    if fmt_upper == "PDF":
         pdf_bytes = default_report_engine.render_pdf(report)
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
             headers={"Content-Disposition": f'attachment; filename="TRUST-CV-Report-{report_id[:8]}.pdf"'}
         )
-    elif format == ReportFormat.HTML:
+    elif fmt_upper == "HTML":
         rendered = ReportFormatter.format_html(report)
         return Response(content=rendered, media_type="text/html")
-    elif format == ReportFormat.MARKDOWN:
+    elif fmt_upper in ("MARKDOWN", "MD"):
         rendered = ReportFormatter.format_markdown(report)
         return Response(content=rendered, media_type="text/markdown")
     else:
