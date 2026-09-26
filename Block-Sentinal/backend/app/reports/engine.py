@@ -237,7 +237,7 @@ class AssuranceReportEngine:
             quarantine_records=[{"subject_id": target_asset_id, "reason": "Critical layer weight discrepancy and runtime replay detection."}],
             cryptographic_proofs=CryptographicProofs(
                 canonical_report_digest=report_digest,
-                ecdsa_signature=signature,
+                ed25519_signature=signature,
             ),
         )
 
@@ -321,6 +321,7 @@ class AssuranceReportEngine:
     def render_pdf(self, report: AssuranceReport) -> bytes:
         """Render a defense-grade PDF assurance report using Jinja2 and WeasyPrint."""
         import jinja2
+        # pyrefly: ignore [missing-import]
         import weasyprint
 
         template_dir = Path(__file__).resolve().parent.parent / "templates" / "reports"

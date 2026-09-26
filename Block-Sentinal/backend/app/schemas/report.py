@@ -21,7 +21,11 @@ class ReportFormat(str, Enum):
 class CryptographicProofs(BaseModel):
     """Cryptographic proof references attached to an assurance report."""
     canonical_report_digest: str
-    ecdsa_signature: str
+    ed25519_signature: str
+
+    @property
+    def ecdsa_signature(self) -> str:
+        return self.ed25519_signature
 
 
 class AssuranceReport(BaseModel):
@@ -54,7 +58,7 @@ class AssuranceReport(BaseModel):
     inference_findings: List[Dict[str, Any]] = Field(default_factory=list)
     drift_findings: List[Dict[str, Any]] = Field(default_factory=list)
     quarantine_records: List[Dict[str, Any]] = Field(default_factory=list)
-    cryptographic_proofs: CryptographicProofs = Field(default_factory=lambda: CryptographicProofs(canonical_report_digest="", ecdsa_signature=""))
+    cryptographic_proofs: CryptographicProofs = Field(default_factory=lambda: CryptographicProofs(canonical_report_digest="", ed25519_signature=""))
 
 
 class GenerateReportRequest(BaseModel):

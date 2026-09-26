@@ -235,6 +235,8 @@ class LabelInconsistencyDetector:
         # 2. Malformed annotations (YOLO bbox out of [0,1] range)
         for s in samples:
             for label in s.labels:
+                if not isinstance(label, dict):
+                    continue
                 bbox = label.get("bbox_normalized")
                 if bbox and isinstance(bbox, list) and len(bbox) == 4:
                     try:
@@ -478,12 +480,13 @@ class OODDetector:
                 with Image.open(img_path) as img:
                     gray = img.convert("L")
                     arr = np.array(gray, dtype=np.float32)
+                    if arr.size == 0:
+                        continue
 
                     candidate_brightness = float(np.mean(arr))
-                    candidate_entropy = float(-np.sum(
-                        (np.histogram(arr, bins=256, range=(0, 256))[0] / arr.size + 1e-12)
-                        * np.log2(np.histogram(arr, bins=256, range=(0, 256))[0] / arr.size + 1e-12)
-                    ))
+                    hist, _ = np.histogram(arr, bins=256, range=(0, 256))
+                    hist_prob = (hist / arr.size) + 1e-12
+                    candidate_entropy = float(-np.sum(hist_prob * np.log2(hist_prob)))
 
                     # Z-score comparison against reference
                     ref_mean_b = reference_stats.get("mean_brightness", candidate_brightness)
@@ -567,6 +570,7 @@ class TriggerCandidateDetector:
 
         for label_key, group in label_groups.items():
             if len(group) < 2:
+                findings.extend(self._detect_isolated_trigger(group, patch_size, params))
                 continue
             for c_name in corner_names:
                 patch_signatures: Dict[str, List[str]] = defaultdict(list)
@@ -726,6 +730,8 @@ class CleanlabLabelQualityDetector:
                         if k in first and first[k] is not None:
                             label_val = str(first[k])
                             break
+                elif isinstance(first, (str, int, float)):
+                    label_val = str(first)
             if not label_val and s.metadata and "class" in s.metadata:
                 label_val = str(s.metadata["class"])
             if not label_val:

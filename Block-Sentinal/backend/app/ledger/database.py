@@ -1,7 +1,7 @@
 """Ledger-specific database configuration."""
 from pathlib import Path
 from typing import Generator, Optional
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 from app.core.config import settings
@@ -27,6 +27,14 @@ ledger_engine = create_engine(
     get_resolved_ledger_sqlite_url(),
     connect_args={"check_same_thread": False},
 )
+
+
+@event.listens_for(ledger_engine, "connect")
+def set_ledger_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    cursor.close()
+
 
 LedgerSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=ledger_engine)
 

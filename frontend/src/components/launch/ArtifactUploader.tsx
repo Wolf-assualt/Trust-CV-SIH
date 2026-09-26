@@ -36,6 +36,7 @@ export const ArtifactUploader: React.FC = () => {
   const [mode, setMode] = useState<'batch' | 'one-off'>('batch');
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const videoInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // One-off check local states
   const [oneOffTarget, setOneOffTarget] = useState<File | null>(null);
@@ -506,6 +507,17 @@ export const ArtifactUploader: React.FC = () => {
                   onChange={e => handleFileSelect(art.id, e)}
                   style={{ display: 'none' }}
                 />
+                {art.type === 'dataset' && (
+                  <input
+                    type="file"
+                    ref={el => {
+                      videoInputRefs.current[art.id] = el;
+                    }}
+                    accept=".mp4,.avi,.mov,.mkv,.webm"
+                    onChange={e => handleFileSelect(art.id, e)}
+                    style={{ display: 'none' }}
+                  />
+                )}
 
                 <div>
                   <div
@@ -663,6 +675,21 @@ export const ArtifactUploader: React.FC = () => {
                         Accepted: {art.metadata.format}
                       </div>
                     )}
+                    {art.type === 'dataset' && art.filename && isVideoFile(art.filename) && (
+                      <div
+                        style={{
+                          marginTop: '6px',
+                          fontSize: '12px',
+                          color: 'var(--accent-text)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <Video size={13} strokeWidth={1.5} />
+                        Surveillance video feed (OpenCV frame extraction enabled)
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -717,7 +744,7 @@ export const ArtifactUploader: React.FC = () => {
                           fontWeight: 500,
                         }}
                       >
-                        Click to upload or drag & drop
+                        {art.type === 'dataset' ? 'Drop archive, images, or video (.mp4, .avi)' : 'Click to upload or drag & drop'}
                       </span>
                     </>
                   )}
@@ -729,24 +756,39 @@ export const ArtifactUploader: React.FC = () => {
                     alignItems: 'center',
                     gap: '8px',
                     marginTop: '12px',
+                    flexWrap: 'wrap',
                   }}
                 >
                   <Button
                     variant="outline"
                     size="sm"
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, minWidth: '95px' }}
                     onClick={() => fileInputRefs.current[art.id]?.click()}
                     icon={<FolderOpen size={13} strokeWidth={1.5} />}
                     className="choose-file-btn"
                   >
-                    Choose File
+                    {art.type === 'dataset' ? 'Dataset File' : 'Choose File'}
                   </Button>
+
+                  {art.type === 'dataset' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      style={{ flex: 1, minWidth: '105px' }}
+                      onClick={() => videoInputRefs.current[art.id]?.click()}
+                      icon={<Video size={13} strokeWidth={1.5} />}
+                      className="choose-video-btn"
+                      title="Upload surveillance video (.mp4, .avi, .mov) for automated OpenCV frame extraction"
+                    >
+                      Upload Video
+                    </Button>
+                  )}
 
                   {!isVerified ? (
                     <Button
                       variant="primary"
                       size="sm"
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, minWidth: '95px' }}
                       onClick={() => verifyArtifact(art.id)}
                       icon={<Zap size={13} strokeWidth={1.5} />}
                     >
@@ -756,7 +798,7 @@ export const ArtifactUploader: React.FC = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, minWidth: '95px' }}
                       onClick={() => verifyArtifact(art.id)}
                       icon={<CheckCircle2 size={13} strokeWidth={1.5} style={{ color: 'var(--success-text)' }} />}
                     >
