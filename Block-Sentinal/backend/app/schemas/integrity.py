@@ -21,6 +21,11 @@ class IntegrityCheckType(str, Enum):
     TRIGGER_BACKDOOR = "TRIGGER_BACKDOOR"       # kept for backwards compat
 
 
+class TriggerTag(str, Enum):
+    STATIC_PATCH = "STATIC_PATCH"
+    HEURISTIC_SALIENCY_ANOMALY = "HEURISTIC_SALIENCY_ANOMALY"
+
+
 class IntegritySeverity(str, Enum):
     """Severity indicates potential impact, NOT probability or certainty.
 
@@ -78,6 +83,12 @@ class IntegrityFinding(BaseModel):
     # ── Justified confidence (Phase 3) ───────────────────────────────────────
     confidence: Optional[float] = None       # null when not calculable
     confidence_basis: Optional[str] = None   # documented justification
+
+    # ── Trigger classification tag (Phase 3 extension) ────────────────────────
+    trigger_tag: Optional[str] = Field(
+        default=None,
+        description="Tag indicating trigger mechanism: 'STATIC_PATCH' vs 'HEURISTIC_SALIENCY_ANOMALY'",
+    )
 
     # ── Extended evidence (Phase 3) ──────────────────────────────────────────
     limitations: Optional[str] = None

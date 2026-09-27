@@ -7,7 +7,7 @@ import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 # pyrefly: ignore [missing-import]
 import numpy as np
 # pyrefly: ignore [missing-import]
@@ -20,6 +20,7 @@ from app.schemas.integrity import (
     IntegrityCheckType,
     IntegrityFinding,
     IntegritySeverity,
+    TriggerTag,
 )
 
 DHASH_BITS = 64  # 8x8 dHash = 64 bits
@@ -530,35 +531,176 @@ class OODDetector:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Proxy Occlusion Saliency Analyzer
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ProxyOcclusionSaliencyAnalyzer:
+    """Lightweight proxy-model occlusion sensitivity scanner to detect localized regions
+    with abnormally high influence on prediction relative to the rest of the image.
+
+    Serves as an additional heuristic proxy signal for optimized, imperceptible, or non-static triggers.
+    """
+    _proxy_net = None
+
+    @classmethod
+    def get_proxy_net(cls):
+        if cls._proxy_net is None:
+            try:
+                import torch
+                import torch.nn as nn
+
+                class SmallProxyNet(nn.Module):
+                    def __init__(self):
+                        super().__init__()
+                        self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
+                        self.pool = nn.MaxPool2d(2, 2)
+                        self.conv2 = nn.Conv2d(16, 32, 3, padding=1)
+                        self.fc = nn.Linear(32 * 8 * 8, 10)
+
+                    def forward(self, x):
+                        x = self.pool(torch.relu(self.conv1(x)))
+                        x = self.pool(torch.relu(self.conv2(x)))
+                        x = torch.flatten(x, 1)
+                        return self.fc(x)
+
+                torch.manual_seed(42)
+                net = SmallProxyNet()
+                net.eval()
+                cls._proxy_net = net
+            except Exception:
+                cls._proxy_net = False
+        return cls._proxy_net
+
+    @classmethod
+    def compute_saliency_anomaly(cls, image_path: str) -> Optional[Dict[str, Any]]:
+        """Returns saliency anomaly details if a localized patch disproportionately influences output."""
+        try:
+            with Image.open(image_path) as img:
+                rgb = img.convert("RGB").resize((32, 32), resample=Image.Resampling.BILINEAR)
+                arr = np.array(rgb, dtype=np.float32) / 255.0
+
+            net = cls.get_proxy_net()
+            if net and net is not False:
+                import torch
+                tensor = torch.tensor(arr.transpose(2, 0, 1), dtype=torch.float32).unsqueeze(0)
+                with torch.no_grad():
+                    logits = net(tensor)
+                    probs = torch.softmax(logits, dim=1)[0]
+                    top_class = int(torch.argmax(probs).item())
+                    base_prob = float(probs[top_class].item())
+
+                    # 4x4 grid occlusion (each cell is 8x8 in 32x32 image)
+                    drops = []
+                    grid_coords = []
+                    for r in range(4):
+                        for c in range(4):
+                            occ_tensor = tensor.clone()
+                            occ_tensor[0, :, r * 8 : (r + 1) * 8, c * 8 : (c + 1) * 8] = 0.5
+                            occ_logits = net(occ_tensor)
+                            occ_prob = float(torch.softmax(occ_logits, dim=1)[0, top_class].item())
+                            drop = max(0.0, base_prob - occ_prob)
+                            drops.append(drop)
+                            grid_coords.append((r, c))
+
+                    drops_arr = np.array(drops, dtype=np.float32)
+                    mean_drop = float(np.mean(drops_arr))
+                    std_drop = float(np.std(drops_arr))
+                    max_idx = int(np.argmax(drops_arr))
+                    max_drop = float(drops_arr[max_idx])
+                    best_r, best_c = grid_coords[max_idx]
+
+                    if std_drop > 1e-4 and mean_drop > 1e-4:
+                        ratio = max_drop / (mean_drop + 1e-6)
+                        z_score = (max_drop - mean_drop) / (std_drop + 1e-6)
+                    else:
+                        ratio = 1.0
+                        z_score = 0.0
+
+                    if ratio >= 3.0 and z_score >= 2.2 and max_drop >= 0.12:
+                        return {
+                            "grid_cell": [best_r, best_c],
+                            "saliency_ratio": round(ratio, 4),
+                            "z_score": round(z_score, 4),
+                            "max_drop": round(max_drop, 4),
+                            "mean_drop": round(mean_drop, 4),
+                            "method": "proxy_model_occlusion_sensitivity",
+                        }
+            else:
+                gray = np.mean(arr, axis=2)
+                energies = []
+                coords = []
+                for r in range(4):
+                    for c in range(4):
+                        block = gray[r * 8 : (r + 1) * 8, c * 8 : (c + 1) * 8]
+                        var = float(np.var(block))
+                        energies.append(var)
+                        coords.append((r, c))
+                energies_arr = np.array(energies, dtype=np.float32)
+                mean_e = float(np.mean(energies_arr))
+                std_e = float(np.std(energies_arr))
+                max_idx = int(np.argmax(energies_arr))
+                max_e = float(energies_arr[max_idx])
+                best_r, best_c = coords[max_idx]
+                if std_e > 1e-4 and mean_e > 1e-4:
+                    ratio = max_e / (mean_e + 1e-6)
+                    z_score = (max_e - mean_e) / (std_e + 1e-6)
+                    if ratio >= 4.0 and z_score >= 2.5 and max_e >= 0.08:
+                        return {
+                            "grid_cell": [best_r, best_c],
+                            "saliency_ratio": round(ratio, 4),
+                            "z_score": round(z_score, 4),
+                            "max_drop": round(max_e, 4),
+                            "mean_drop": round(mean_e, 4),
+                            "method": "numpy_energy_concentration",
+                        }
+        except Exception:
+            pass
+        return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Trigger Candidate Detector
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TriggerCandidateDetector:
-    """Detects recurring static patch patterns in corner regions.
+    """Detects recurring static patch patterns in corner and spatial regions, as well
+    as heuristic saliency anomalies via proxy occlusion sensitivity.
 
     Finding type: TRIGGER_CANDIDATE (not TRIGGER_BACKDOOR).
-    This detector identifies localized trigger candidates, NOT confirmed backdoors.
-
-    Repeated patch confidence: affected_count / group_size (proportion of samples
-    with matching patch signature in the same label group).
-    Isolated high-contrast confidence: null (heuristic thresholds, no ground truth).
+    Tags findings by mechanism:
+      - 'STATIC_PATCH': Repeated perceptual/exact patch patterns in corner or spatial sliding windows.
+      - 'HEURISTIC_SALIENCY_ANOMALY': Localized regions with abnormally high predictive influence
+        on a proxy model (heuristic proxy signal for optimized/imperceptible triggers).
 
     Coverage limitations:
-    - Only inspects 4 corner regions of fixed patch_size
-    - Cannot detect non-localized or semantic backdoor triggers
-    - Cannot detect triggers that vary per sample
-    - A positive finding indicates a CANDIDATE requiring human review
+    - Sliding window uses perceptual dHash and variance filtering.
+    - Saliency check uses proxy occlusion sensitivity; does not guarantee detection of
+      adversarially optimized or distributed triggers.
+    - A positive finding indicates a CANDIDATE requiring human review.
     """
 
     DETECTOR_ID = "TRIGGER_CANDIDATE_DETECTOR"
-    DETECTOR_VERSION = "2.0.0"
+    DETECTOR_VERSION = "2.1.0"
 
-    def detect(self, samples: List[SampleRecord], patch_size: int = 4) -> List[IntegrityFinding]:
+    def detect(
+        self,
+        samples: List[SampleRecord],
+        patch_size: int = 4,
+        enable_sliding_window: bool = True,
+        enable_saliency_proxy: bool = True,
+    ) -> List[IntegrityFinding]:
         findings: List[IntegrityFinding] = []
-        params = {"patch_size": patch_size}
+        params = {
+            "patch_size": patch_size,
+            "enable_sliding_window": enable_sliding_window,
+            "enable_saliency_proxy": enable_saliency_proxy,
+        }
 
         if len(samples) < 2:
-            return self._detect_isolated_trigger(samples, patch_size, params)
+            findings.extend(self._detect_isolated_trigger(samples, patch_size, params))
+            if enable_saliency_proxy:
+                findings.extend(self._detect_saliency_anomalies(samples, params))
+            return findings
 
         # Group samples by primary label class
         label_groups: Dict[str, List[SampleRecord]] = defaultdict(list)
@@ -572,6 +714,9 @@ class TriggerCandidateDetector:
             if len(group) < 2:
                 findings.extend(self._detect_isolated_trigger(group, patch_size, params))
                 continue
+
+            existing_corner_pairs = set()
+
             for c_name in corner_names:
                 patch_signatures: Dict[str, List[str]] = defaultdict(list)
 
@@ -605,8 +750,9 @@ class TriggerCandidateDetector:
                     if len(sample_ids) >= 2:
                         distinct_image_hashes = {sample_by_id[sid].sha256_hash for sid in sample_ids}
                         if len(distinct_image_hashes) < 2:
-                            # Identical duplicate files — handled by DuplicateDetector, not a cross-image trigger
+                            # Identical duplicate files — handled by DuplicateDetector
                             continue
+                        existing_corner_pairs.add(tuple(sorted(sample_ids)))
                         confidence = round(len(sample_ids) / len(group), 4)
                         findings.append(
                             IntegrityFinding(
@@ -616,7 +762,9 @@ class TriggerCandidateDetector:
                                 sample_ids=sample_ids,
                                 description=f"Suspicious repeated static localized patch pattern detected in {c_name} corner across {len(sample_ids)} samples sharing label '{label_key}'.",
                                 metric_score=float(len(sample_ids)),
+                                trigger_tag=TriggerTag.STATIC_PATCH.value,
                                 details={
+                                    "trigger_tag": TriggerTag.STATIC_PATCH.value,
                                     "corner": c_name,
                                     "patch_size": patch_size,
                                     "matched_samples": sample_ids,
@@ -634,6 +782,190 @@ class TriggerCandidateDetector:
                             )
                         )
 
+            # (1) Sliding-window patch scanner across spatial regions
+            if enable_sliding_window:
+                spatial_findings = self._scan_sliding_window_patches(
+                    group=group,
+                    patch_size=patch_size,
+                    label_key=label_key,
+                    params=params,
+                    existing_corner_pairs=existing_corner_pairs,
+                )
+                findings.extend(spatial_findings)
+
+        # (2) Lightweight saliency-based check on proxy model
+        if enable_saliency_proxy:
+            findings.extend(self._detect_saliency_anomalies(samples, params))
+
+        return findings
+
+    def _scan_sliding_window_patches(
+        self,
+        group: List[SampleRecord],
+        patch_size: int,
+        label_key: str,
+        params: Dict,
+        existing_corner_pairs: set,
+    ) -> List[IntegrityFinding]:
+        """Scans spatial interior regions across the image grid using perceptual dHash.
+
+        Tags recurring matches as STATIC_PATCH.
+        """
+        findings: List[IntegrityFinding] = []
+        spatial_signatures: Dict[str, List[Tuple[str, Tuple[int, int]]]] = defaultdict(list)
+        scan_patch = max(8, patch_size)
+
+        for sample in group:
+            try:
+                with Image.open(sample.file_path) as img:
+                    w, h = img.size
+                    if w < scan_patch or h < scan_patch:
+                        continue
+
+                    step_x = max(4, scan_patch // 4)
+                    step_y = max(4, scan_patch // 4)
+                    xs = list(range(0, max(1, w - scan_patch + 1), step_x))
+                    if (w - scan_patch) not in xs and (w - scan_patch) > 0:
+                        xs.append(w - scan_patch)
+                    ys = list(range(0, max(1, h - scan_patch + 1), step_y))
+                    if (h - scan_patch) not in ys and (h - scan_patch) > 0:
+                        ys.append(h - scan_patch)
+
+                    for y in ys:
+                        for x in xs:
+                            # Skip exact outer corners already processed
+                            is_outer_corner = (
+                                (x == 0 and y == 0)
+                                or (x == w - scan_patch and y == 0)
+                                or (x == 0 and y == h - scan_patch)
+                                or (x == w - scan_patch and y == h - scan_patch)
+                            )
+                            if is_outer_corner:
+                                continue
+
+                            patch = img.crop((x, y, x + scan_patch, y + scan_patch))
+                            arr = np.array(patch.convert("L"), dtype=np.float32)
+                            if float(np.var(arr)) < 80.0:
+                                continue
+
+                            phash = compute_dhash(patch, hash_size=8)
+                            spatial_signatures[phash].append((sample.sample_id, (x, y)))
+            except Exception:
+                continue
+
+        sample_by_id = {s.sample_id: s for s in group}
+        for phash, entries in spatial_signatures.items():
+            matched_sids = list(dict.fromkeys([e[0] for e in entries]))
+            if len(matched_sids) >= 2:
+                distinct_hashes = {sample_by_id[sid].sha256_hash for sid in matched_sids}
+                if len(distinct_hashes) < 2:
+                    continue  # Exact duplicate files
+
+                if tuple(sorted(matched_sids)) in existing_corner_pairs:
+                    continue
+
+                coords = [e[1] for e in entries]
+                avg_x = sum(c[0] for c in coords) // len(coords)
+                avg_y = sum(c[1] for c in coords) // len(coords)
+
+                confidence = round(len(matched_sids) / len(group), 4)
+                findings.append(
+                    IntegrityFinding(
+                        finding_id=str(uuid.uuid4()),
+                        check_type=IntegrityCheckType.TRIGGER_CANDIDATE,
+                        severity=IntegritySeverity.CRITICAL,
+                        sample_ids=matched_sids,
+                        description=(
+                            f"Suspicious repeated static localized patch pattern detected via sliding-window perceptual hash "
+                            f"scanner at spatial region ({avg_x}, {avg_y}) across {len(matched_sids)} samples sharing label '{label_key}'."
+                        ),
+                        metric_score=float(len(matched_sids)),
+                        trigger_tag=TriggerTag.STATIC_PATCH.value,
+                        details={
+                            "trigger_tag": TriggerTag.STATIC_PATCH.value,
+                            "detection_method": "sliding_window_perceptual_hash",
+                            "region": f"spatial_window_({avg_x},{avg_y})",
+                            "spatial_coordinates": [avg_x, avg_y, scan_patch, scan_patch],
+                            "patch_size": scan_patch,
+                            "perceptual_dhash": phash,
+                            "matched_samples": matched_sids,
+                            "target_label": label_key,
+                        },
+                        detector_id=self.DETECTOR_ID,
+                        detector_version=self.DETECTOR_VERSION,
+                        detector_parameters=params,
+                        created_at=_now(),
+                        confidence=confidence,
+                        confidence_basis=(
+                            f"affected_count ({len(matched_sids)}) / group_size ({len(group)}): "
+                            f"proportion of samples sharing perceptual patch dHash in spatial scan"
+                        ),
+                        limitations=(
+                            "Sliding-window scanner tests spatial grid with perceptual dHash; "
+                            "still heuristic and does not guarantee detection of sample-variable or non-patch triggers"
+                        ),
+                        recommended_action=(
+                            "Human review required — verify if repeated spatial patch is an injected trigger "
+                            "or recurring background artifact"
+                        ),
+                    )
+                )
+
+        return findings
+
+    def _detect_saliency_anomalies(
+        self,
+        samples: List[SampleRecord],
+        params: Dict,
+    ) -> List[IntegrityFinding]:
+        """Detect localized regions with abnormally high predictive influence using proxy occlusion sensitivity."""
+        findings: List[IntegrityFinding] = []
+        for sample in samples:
+            anomaly = ProxyOcclusionSaliencyAnalyzer.compute_saliency_anomaly(sample.file_path)
+            if anomaly:
+                r, c = anomaly["grid_cell"]
+                ratio = anomaly["saliency_ratio"]
+                z = anomaly["z_score"]
+                findings.append(
+                    IntegrityFinding(
+                        finding_id=str(uuid.uuid4()),
+                        check_type=IntegrityCheckType.TRIGGER_CANDIDATE,
+                        severity=IntegritySeverity.HIGH,
+                        sample_ids=[sample.sample_id],
+                        description=(
+                            f"Heuristic saliency anomaly: localized spatial cell ({r}, {c}) exhibits abnormally high "
+                            f"predictive influence (saliency ratio {ratio:.2f}x mean, z-score {z:.2f}) on proxy model."
+                        ),
+                        metric_score=float(ratio),
+                        trigger_tag=TriggerTag.HEURISTIC_SALIENCY_ANOMALY.value,
+                        details={
+                            "trigger_tag": TriggerTag.HEURISTIC_SALIENCY_ANOMALY.value,
+                            "detection_method": anomaly.get("method", "proxy_occlusion_sensitivity"),
+                            "grid_cell": [r, c],
+                            "saliency_ratio": ratio,
+                            "z_score": z,
+                            "max_drop": anomaly.get("max_drop"),
+                            "mean_drop": anomaly.get("mean_drop"),
+                        },
+                        detector_id=self.DETECTOR_ID,
+                        detector_version=self.DETECTOR_VERSION,
+                        detector_parameters=params,
+                        created_at=_now(),
+                        confidence=0.50,
+                        confidence_basis=(
+                            "Heuristic proxy-model occlusion sensitivity: localized cell accounts for >3x mean "
+                            "predictive influence; proxy signal only, not a ground-truth backdoor proof"
+                        ),
+                        limitations=(
+                            "Heuristic proxy signal only; does not guarantee detection of adversarially optimized, "
+                            "low-amplitude, or distributed triggers. Ground-truth confirmation requires analyst review."
+                        ),
+                        recommended_action=(
+                            "Human review required — inspect localized region under high-contrast or magnification "
+                            "to verify presence of trigger artifact"
+                        ),
+                    )
+                )
         return findings
 
     def _detect_isolated_trigger(
@@ -677,7 +1009,9 @@ class TriggerCandidateDetector:
                                         f"(variance {variance:.1f}, dark ratio {dark_ratio:.2f}, light ratio {light_ratio:.2f})."
                                     ),
                                     metric_score=min(1.0, variance / 16384.0),
+                                    trigger_tag=TriggerTag.STATIC_PATCH.value,
                                     details={
+                                        "trigger_tag": TriggerTag.STATIC_PATCH.value,
                                         "corner": corner,
                                         "patch_size": patch_size,
                                         "variance": variance,
@@ -851,8 +1185,8 @@ class QualityAndOODDetector(QualityDetector):
 class TriggerBackdoorDetector(TriggerCandidateDetector):
     """Backwards-compatible wrapper mapping TRIGGER_CANDIDATE to TRIGGER_BACKDOOR."""
 
-    def detect(self, samples: List[SampleRecord], patch_size: int = 4) -> List[IntegrityFinding]:
-        findings = super().detect(samples, patch_size=patch_size)
+    def detect(self, samples: List[SampleRecord], patch_size: int = 4, **kwargs) -> List[IntegrityFinding]:
+        findings = super().detect(samples, patch_size=patch_size, **kwargs)
         for f in findings:
             if f.check_type == IntegrityCheckType.TRIGGER_CANDIDATE:
                 f.check_type = IntegrityCheckType.TRIGGER_BACKDOOR

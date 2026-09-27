@@ -15,23 +15,22 @@ Do not present capabilities beyond what is listed in the PASS column of
 
 ### L-01: Trigger Candidate Detection is Heuristic
 
-**What works:** Static repeated corner-patch patterns across ≥ 2 samples
-sharing the same label are detected with confidence = `affected/group_size`.
+**What works:**
+- **Static Repeated Patch Matching (`STATIC_PATCH`):**
+  - Corner-patch patterns across ≥ 2 samples sharing the same label (confidence = `affected/group_size`).
+  - **Sliding-window spatial grid scanner** checking all spatial regions (not just corners) using perceptual difference hashing (dHash) and variance filtering to identify recurring non-corner patches.
+- **Proxy Model Occlusion Saliency (`HEURISTIC_SALIENCY_ANOMALY`):**
+  - Lightweight occlusion sensitivity check over a proxy model grid to flag localized spatial regions exhibiting abnormally high predictive influence relative to the rest of the image (saliency ratio $\ge 3.0\times$ mean, $z \ge 2.2$, confidence = `0.50`).
 
 **What does not work:**
-- Triggers that vary per sample
-- Non-corner localized triggers (e.g., centre-image, adaptive position)
-- Non-static triggers (e.g., sinusoidal, perlin-noise-based)
-- Triggers above or below the `patch_size` threshold
-- Single-sample isolated triggers (detected separately with heuristic thresholds
-  and `confidence = null`)
+- Imperceptible gradient-optimized perturbations (e.g., FGSM, PGD-crafted clean-label adversarial perturbations) that pass statistical checks without localized occlusion spikes.
+- Full gradient-based trigger inversion or reconstruction (e.g., Neural Cleanse) which requires model backpropagation and GPU training runtimes outside air-gapped field constraints.
+- Triggers that dynamically vary per sample or use adaptive physical blending.
 
-**Why:** The detector groups samples by label and looks for repeated patch
-SHA-256 signatures in 4 fixed corner regions. It was designed for the
-classical BadNets-style corner trigger.
+**Crucial Assurance Boundary:**
+While the sliding-window scanner and proxy occlusion sensitivity extend heuristic coverage beyond static corners to all spatial regions and localized predictive hotspots, **this still is not a guarantee against adversarially optimized triggers, just wider heuristic coverage**. It serves as an additional defensive heuristic layer. Findings are explicitly tagged by mechanism (`STATIC_PATCH` vs `HEURISTIC_SALIENCY_ANOMALY`) with distinct confidence metrics so analysts can calibrate forensic reviews appropriately.
 
-**Impact:** Finding type is `TRIGGER_CANDIDATE`, explicitly not `TRIGGER_BACKDOOR`.
-Human review is required for any positive finding.
+**Impact:** Finding type is `TRIGGER_CANDIDATE`, explicitly not `TRIGGER_BACKDOOR`. Human review is required for any positive finding.
 
 ---
 
