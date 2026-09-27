@@ -57,6 +57,7 @@ async def upload_and_scan_dataset(
     dataset_name: str = Form("uploaded-dataset"),
     baseline_file: Optional[UploadFile] = File(default=None),
     baseline_id: Optional[str] = Form(default=None),
+    model_id: Optional[str] = Form(default=None),
 ) -> ResponseEnvelope[ScanSession]:
     """Persist and immediately start a background scan session for an uploaded dataset.
 
@@ -170,8 +171,11 @@ async def upload_and_scan_dataset(
             except Exception:
                 pass
 
-        if assigned_baseline_id:
-            manifest.metadata["baseline_id"] = assigned_baseline_id
+        if assigned_baseline_id or model_id:
+            if assigned_baseline_id:
+                manifest.metadata["baseline_id"] = assigned_baseline_id
+            if model_id:
+                manifest.metadata["model_id"] = model_id
             manifest_file = default_ingestion_engine.manifests_dir / f"{manifest.batch_id}.json"
             with open(manifest_file, "w", encoding="utf-8") as f:
                 f.write(canonical_json_dumps(manifest.model_dump(mode="json")))

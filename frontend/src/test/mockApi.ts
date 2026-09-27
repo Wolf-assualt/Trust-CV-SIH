@@ -72,6 +72,8 @@ export function createMockApiService() {
       }),
     ),
 
+    fetchModels: track('fetchModels', () => Promise.resolve([])),
+
     getScanSession: track('getScanSession', (_scanId: string) =>
       Promise.resolve<ScanSession>({
         scan_id: 'scan-mock-001',

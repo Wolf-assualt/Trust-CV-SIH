@@ -195,6 +195,7 @@ class ApiService {
     file: File,
     baselineFile?: File,
     baselineId?: string,
+    modelId?: string,
   ): Promise<ScanSession> {
     const body = new FormData();
     body.append('file', file);
@@ -205,12 +206,25 @@ class ApiService {
     if (baselineId) {
       body.append('baseline_id', baselineId);
     }
+    if (modelId) {
+      body.append('model_id', modelId);
+    }
     const response = await fetch(`${this.baseUrl}/datasets/upload`, { method: 'POST', body });
     const envelope: ApiResponse<ScanSession> = await response.json();
     if (!response.ok || !envelope.data) {
       throw new Error(envelope.error || `Upload failed with HTTP ${response.status}`);
     }
     return envelope.data;
+  }
+
+  async fetchModels(): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/models`);
+      const envelope = await response.json();
+      return envelope.data || [];
+    } catch {
+      return [];
+    }
   }
 
   async uploadBaseline(

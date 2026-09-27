@@ -193,7 +193,19 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
         metadata: { ...art.metadata, format: 'Uploading to backend…' },
       } : art));
       try {
-        const session = await apiService.uploadAndScanDataset(file);
+        const modelArt = artifacts.find(a => a.type === 'model');
+        let activeModelId: string | undefined = modelArt?.metadata?.modelId as string | undefined;
+        if (!activeModelId) {
+          try {
+            const registeredModels = await apiService.fetchModels();
+            if (registeredModels && registeredModels.length > 0) {
+              activeModelId = registeredModels[0].model_id;
+            }
+          } catch {
+            // fallback if models endpoint unreachable
+          }
+        }
+        const session = await apiService.uploadAndScanDataset(file, undefined, undefined, activeModelId);
         setCurrentScanId(session.scan_id);
         setScanSession(session);
         // Update the artifact card with real values from the backend response.
@@ -249,6 +261,7 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
           progress: 100,
           metadata: {
             ...art.metadata,
+            modelId: manifest.model_id,
             format: `Registered — model_id: ${manifest.model_id.substring(0, 8)}…`,
           },
         } : art));
@@ -296,7 +309,19 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
     } : art));
 
     try {
-      const session = await apiService.uploadAndScanDataset(targetFile, baselineFile);
+      const modelArt = artifacts.find(a => a.type === 'model');
+      let activeModelId: string | undefined = modelArt?.metadata?.modelId as string | undefined;
+      if (!activeModelId) {
+        try {
+          const registeredModels = await apiService.fetchModels();
+          if (registeredModels && registeredModels.length > 0) {
+            activeModelId = registeredModels[0].model_id;
+          }
+        } catch {
+          // fallback if models endpoint unreachable
+        }
+      }
+      const session = await apiService.uploadAndScanDataset(targetFile, baselineFile, undefined, activeModelId);
       setCurrentScanId(session.scan_id);
       setScanSession(session);
 
@@ -713,7 +738,8 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
         }).length;
 
         const isModelPassed = session.stage_results?.['MODEL_INTEGRITY']?.status === 'PASSED';
-        const modelLayers = isModelPassed ? 24 : 0;
+        const isModelRunning = session.stage === 'MODEL_ASSURANCE';
+        const modelLayers = isModelPassed ? 24 : (isModelRunning ? 16 : 0);
 
         setLiveMetrics({
           samplesAnalyzed: totalSamples,
