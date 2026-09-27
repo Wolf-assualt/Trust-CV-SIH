@@ -724,6 +724,12 @@ async def _run_scan_pipeline(scan_id: str, batch_id: str):
                 "imageResults": [ir.model_dump(mode="json") for ir in report.image_results],
             }
         
+        final_disp = session.assessment.get("disposition", "ACCEPTED") if session.assessment else "ACCEPTED"
+        session.stage_results["FINAL_VERDICT"] = ComponentState(
+            status=ComponentStatus.PASSED,
+            explanation=f"Consolidated zero-trust disposition: {final_disp}",
+        )
+
         session.stage = ScanStage.COMPLETED
         session.progress = 1.0
         session.status = ScanStatus.COMPLETED

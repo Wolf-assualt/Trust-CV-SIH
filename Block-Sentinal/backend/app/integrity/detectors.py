@@ -1105,8 +1105,11 @@ class CleanlabLabelQualityDetector:
 
         try:
             from sklearn.neighbors import KNeighborsClassifier
+            # pyrefly: ignore [missing-import]
             import cleanlab
+            # pyrefly: ignore [missing-import]
             from cleanlab.filter import find_label_issues
+            # pyrefly: ignore [missing-import]
             from cleanlab.rank import get_label_quality_scores
 
             X = np.array(features_list)

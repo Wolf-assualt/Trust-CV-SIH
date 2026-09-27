@@ -1,0 +1,69 @@
+{
+  "assessment_id": "fused_5e1eebeca13e",
+  "target_entity_id": "8684a254-913c-4457-91ed-272b6e063caa",
+  "overall_status": "UNDER_REVIEW",
+  "verdict": "UNDER_REVIEW",
+  "risk_level": "HIGH",
+  "risk_score": 0.5,
+  "confidence": 0.12,
+  "confidence_score": 0.12,
+  "action": "REVIEW",
+  "coverage": {
+    "sources_checked": [
+      "DATA_INTEGRITY"
+    ],
+    "coverage_ratio": 0.2,
+    "missing_sources": [
+      "MODEL_IDENTITY",
+      "BEHAVIOURAL_FINGERPRINT",
+      "INFERENCE_DNA",
+      "DISTRIBUTION_SHIFT"
+    ]
+  },
+  "findings": [],
+  "correlated_findings": [],
+  "contributors": [
+    "UNKNOWN"
+  ],
+  "recommended_actions": [
+    "FLAG for security officer and ML engineer secondary review."
+  ],
+  "limitations": [
+    "Limited verification scope (MINIMAL): 1/5 evidence sources checked.",
+    "Audit coverage ratio: 20%.",
+    "Offline deterministic assurance without reliance on third-party cloud trust oracles.",
+    "Unchecked evidence sources: MODEL_IDENTITY, BEHAVIOURAL_FINGERPRINT, INFERENCE_DNA, DISTRIBUTION_SHIFT."
+  ],
+  "explanation": "Partial verification (MINIMAL) \u2014 evaluated 1/5 sources",
+  "raw_evidence": [
+    {
+      "evidence_id": "integrity_dd549675-e9fd-4fd6-b07a-621d868d6922",
+      "source": "DATA_INTEGRITY",
+      "domain": null,
+      "severity": "HIGH",
+      "metric_value": 0.5,
+      "description": "Zero-variance flat image detected (variance: 0.0000). Image appears to be solid color or sensor blackout.",
+      "subject_id": "8684a254-913c-4457-91ed-272b6e063caa",
+      "related_model_id": null,
+      "related_dataset_id": "8684a254-913c-4457-91ed-272b6e063caa",
+      "evidence_digest": null,
+      "confidence": null,
+      "evidence_type": null,
+      "metadata": {
+        "check_type": "QUALITY_ANOMALY",
+        "sample_ids": [
+          "candidate.png"
+        ],
+        "contributor": "UNKNOWN"
+      }
+    }
+  ],
+  "decisive_evidence": [],
+  "hard_veto_triggered": false,
+  "veto_reasons": [],
+  "signature": "130d432cc2cb14b12ed77baf41f467bfb90237cd29159ebcfed891db3cc056cd8046f0eb03d853a95174d2118558b18943826aa24a7da583e5fb171c51c6510f",
+  "assessment_digest": "7d871c8b3ef85088bd913031b497eabc2fed25e1af67daca505bf830a0ef8ca1",
+  "scope": "MINIMAL",
+  "evidence_completeness": "MINIMAL",
+  "created_at": "2026-09-27T08:12:44.976315Z"
+}

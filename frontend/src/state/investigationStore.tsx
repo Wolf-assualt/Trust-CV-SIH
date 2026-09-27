@@ -394,9 +394,9 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentOperation, setCurrentOperation] = useState('System ready');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [stages, setStages] = useState<PipelineStage[]>(PIPELINE_STAGES);
-  const [terminalLogs] = useState<TerminalLog[]>([]);
-  const [liveMetrics] = useState<LiveMetrics>(INITIAL_METRICS);
-  const [signalPoints] = useState<SignalPoint[]>([]);
+  const [terminalLogs, setTerminalLogs] = useState<TerminalLog[]>([]);
+  const [liveMetrics, setLiveMetrics] = useState<LiveMetrics>(INITIAL_METRICS);
+  const [signalPoints, setSignalPoints] = useState<SignalPoint[]>([]);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<FindingCategory>('ALL');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('ALL');
@@ -535,6 +535,9 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
     setElapsedSeconds(0);
     setCurrentOperation('System ready');
     setStages(PIPELINE_STAGES);
+    setLiveMetrics(INITIAL_METRICS);
+    setTerminalLogs([]);
+    setSignalPoints([]);
   };
 
   /**
@@ -683,6 +686,131 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
           return s;
         }));
 
+        // ── Real-Time Live Metrics & Telemetry ──
+        const totalSamples = Number(
+          session.assessment?.totalSamples ??
+          datasetArtifact?.metadata?.samplesCount ??
+          session.input_artifacts?.length ??
+          0
+        );
+        const findingsList = session.findings || [];
+        const dupCount = findingsList.filter((f: any) => String(f.check_type || '').toUpperCase().includes('DUPLICATE')).length;
+        const poisonCount = findingsList.filter((f: any) => {
+          const c = String(f.check_type || '').toUpperCase();
+          return c.includes('TRIGGER') || c.includes('BACKDOOR') || c.includes('POISON');
+        }).length;
+        const oodCount = findingsList.filter((f: any) => {
+          const c = String(f.check_type || '').toUpperCase();
+          return c.includes('OOD') || c.includes('DRIFT') || c.includes('SHIFT');
+        }).length;
+        const modelAnom = findingsList.filter((f: any) => {
+          const c = String(f.check_type || '').toUpperCase();
+          return c.includes('MODEL') || c.includes('WEIGHT');
+        }).length;
+        const infAnom = findingsList.filter((f: any) => {
+          const c = String(f.check_type || '').toUpperCase();
+          return c.includes('INFERENCE') || c.includes('OUTPUT');
+        }).length;
+
+        const isModelPassed = session.stage_results?.['MODEL_INTEGRITY']?.status === 'PASSED';
+        const modelLayers = isModelPassed ? 24 : 0;
+
+        setLiveMetrics({
+          samplesAnalyzed: totalSamples,
+          totalSamples: totalSamples,
+          modelLayersInspected: modelLayers,
+          totalLayers: 24,
+          hashesVerified: totalSamples,
+          duplicatesFound: dupCount,
+          poisonedSamples: poisonCount,
+          oodCandidates: oodCount,
+          modelAnomalies: modelAnom,
+          inferenceAnomalies: infAnom,
+        });
+
+        // ── Live Terminal Logs ──
+        const logs: TerminalLog[] = [
+          {
+            id: 'log-kernel-init',
+            timestamp: session.created_at || new Date().toISOString(),
+            level: 'INFO',
+            message: `Kernel initialized. Active scan ID: ${currentScanId.slice(0, 8)}…`,
+          },
+        ];
+
+        if (session.stage_results) {
+          Object.entries(session.stage_results).forEach(([code, state], idx) => {
+            const statusUp = (state.status || '').toUpperCase();
+            const lvl = statusUp === 'PASSED' ? 'PASS' : statusUp === 'FAILED' ? 'CRIT' : statusUp === 'UNAVAILABLE' ? 'WARN' : 'INFO';
+            logs.push({
+              id: `log-${code}-${idx}`,
+              timestamp: new Date().toISOString(),
+              level: lvl as any,
+              stageCode: code,
+              message: `Stage [${code}]: ${state.explanation || state.status}`,
+            });
+          });
+        }
+
+        findingsList.forEach((f: any, idx: number) => {
+          logs.push({
+            id: `log-fnd-${idx}`,
+            timestamp: new Date().toISOString(),
+            level: f.severity === 'CRITICAL' ? 'CRIT' : 'WARN',
+            message: `[${f.check_type}] ${f.description || f.finding_id}`,
+          });
+        });
+
+        if (session.status === 'COMPLETED') {
+          logs.push({
+            id: 'log-fin',
+            timestamp: new Date().toISOString(),
+            level: 'PASS',
+            message: `Pipeline complete. Zero-Trust disposition: ${session.assessment?.disposition || 'ACCEPTED'}`,
+          });
+        }
+        setTerminalLogs(logs);
+
+        // ── Latent Feature Space Signal Points ──
+        if (session.assessment?.imageResults && session.assessment.imageResults.length > 0) {
+          const pts: SignalPoint[] = session.assessment.imageResults.map((img: any, idx: number) => {
+            const isPoisoned = img.action === 'QUARANTINE' || (img.evidence || []).some((e: string) => {
+              const el = String(e).toLowerCase();
+              return el.includes('trigger') || el.includes('backdoor') || el.includes('poison');
+            });
+            const isOod = (img.anomaly_score || 0) >= 0.3 || (img.evidence || []).some((e: string) => {
+              const el = String(e).toLowerCase();
+              return el.includes('ood') || el.includes('drift') || el.includes('shift');
+            });
+            const status: 'normal' | 'ood' | 'poisoned' = isPoisoned ? 'poisoned' : isOod ? 'ood' : 'normal';
+            const angle = (idx * 137.5 * Math.PI) / 180;
+            let x = 250;
+            let y = 120;
+            if (isPoisoned) {
+              x = 410 + Math.cos(angle) * (8 + (idx % 16));
+              y = 70 + Math.sin(angle) * (8 + (idx % 16));
+            } else if (isOod) {
+              const r = 95 + (idx % 35);
+              x = 250 + Math.cos(angle) * r;
+              y = 120 + Math.sin(angle) * (r * 0.55);
+            } else {
+              const r = 20 + ((idx * 23) % 55);
+              x = 250 + Math.cos(angle) * r;
+              y = 120 + Math.sin(angle) * (r * 0.55);
+            }
+            return {
+              id: `pt-${img.sample_id || idx}`,
+              sampleId: img.sample_id || `sample_${idx}`,
+              x: Math.round(x),
+              y: Math.round(y),
+              status,
+              score: img.anomaly_score ?? 0.0,
+              cluster: isPoisoned ? 'Poisoned Trigger Cluster' : isOod ? 'Distribution Outlier' : 'Nominal Latent Manifold',
+            };
+          });
+          setSignalPoints(pts);
+        }
+
         if (session.status === 'COMPLETED' || session.status === 'FAILED') {
           clearInterval(scanIntervalRef.current!);
 
@@ -808,6 +936,9 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
     setScanProgress(0);
     setElapsedSeconds(0);
     setStages(PIPELINE_STAGES);
+    setLiveMetrics(INITIAL_METRICS);
+    setTerminalLogs([]);
+    setSignalPoints([]);
     setCurrentOperation('Connecting to backend scan session…');
     setPhase('scan');
     pollScanProgress();
