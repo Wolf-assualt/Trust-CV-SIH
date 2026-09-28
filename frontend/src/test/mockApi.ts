@@ -142,7 +142,7 @@ export function createMockApiService() {
     ),
 
     // ── Graph ──
-    fetchGraphExport: track('fetchGraphExport', () =>
+    fetchGraphExport: track('fetchGraphExport', (_batchId?: string) =>
       Promise.resolve<BackendGraphExport>({
         nodes: [
           {

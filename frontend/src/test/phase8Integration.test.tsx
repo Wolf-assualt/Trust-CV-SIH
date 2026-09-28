@@ -276,3 +276,155 @@ describe('clearArtifacts', () => {
     expect(capturedState!.isReadyToScan).toBe(false);
   });
 });
+
+// ── 8. EvidenceGraph — no fabricated data when backend is down ──────────────
+
+describe('EvidenceGraph — no fabricated data when backend is down', () => {
+  it('shows empty graph state when fetchGraphExport rejects', async () => {
+    // Override mock to simulate backend being down
+    (mockApiModule.mock as Record<string, unknown>).fetchGraphExport = () =>
+      Promise.reject(new Error('Network error'));
+
+    let capturedState: ReturnType<typeof useInvestigation> | null = null;
+
+    await act(async () => {
+      render(
+        <InvestigationProvider>
+          <StoreInspector onRender={s => { capturedState = s; }} />
+        </InvestigationProvider>,
+      );
+    });
+
+    // Trigger graph load
+    await act(async () => {
+      await capturedState!.loadEvidenceGraph();
+    });
+
+    // Graph must be empty — no fabricated nodes or edges
+    expect(capturedState!.graphNodes).toHaveLength(0);
+    expect(capturedState!.graphEdges).toHaveLength(0);
+    expect(capturedState!.graphDigest).toBe('');
+  });
+
+  it('shows empty graph state when fetchGraphExport returns null', async () => {
+    (mockApiModule.mock as Record<string, unknown>).fetchGraphExport = () =>
+      Promise.resolve(null);
+
+    let capturedState: ReturnType<typeof useInvestigation> | null = null;
+
+    await act(async () => {
+      render(
+        <InvestigationProvider>
+          <StoreInspector onRender={s => { capturedState = s; }} />
+        </InvestigationProvider>,
+      );
+    });
+
+    await act(async () => {
+      await capturedState!.loadEvidenceGraph();
+    });
+
+    expect(capturedState!.graphNodes).toHaveLength(0);
+    expect(capturedState!.graphEdges).toHaveLength(0);
+    expect(capturedState!.graphDigest).toBe('');
+  });
+});
+
+
+// ── 9. EvidenceGraph scoping, reset isolation, and late response rejection ──
+
+describe('EvidenceGraph scoping, reset isolation, and stale response rejection', () => {
+  it('loads graph for scan A, clears immediately on resetInvestigation, and drops slow response from scan A arriving after reset', async () => {
+    const scanANodes = [
+      { id: 'node_1', node_type: 'DATASET_BATCH', label: 'Batch A', properties: { status: 'passed' } },
+      { id: 'node_2', node_type: 'SAMPLE', label: 'Sample 1', properties: { status: 'passed' } },
+      { id: 'node_3', node_type: 'SAMPLE', label: 'Sample 2', properties: { status: 'passed' } },
+      { id: 'node_4', node_type: 'MODEL', label: 'Model M', properties: { status: 'passed' } },
+      { id: 'node_5', node_type: 'FUSION_ASSESSMENT', label: 'Assessment', properties: { status: 'passed' } },
+    ];
+
+    const fetchGraphExportMock = vi.fn((_batchId?: string) =>
+      Promise.resolve({
+        nodes: scanANodes,
+        edges: [
+          { source_id: 'node_1', target_id: 'node_2', edge_type: 'CONTAINS_SAMPLE' },
+        ],
+        graph_digest: 'digest_scan_a_12345',
+      }),
+    );
+    (mockApiModule.mock as Record<string, unknown>).fetchGraphExport = fetchGraphExportMock;
+
+    let capturedState: ReturnType<typeof useInvestigation> | null = null;
+
+    await act(async () => {
+      render(
+        <InvestigationProvider>
+          <StoreInspector onRender={s => { capturedState = s; }} />
+        </InvestigationProvider>,
+      );
+    });
+
+    // 1. Simulate starting Scan A by uploading a dataset
+    const file = new File(['pixel data'], 'dataset_a.jpg', { type: 'image/jpeg' });
+    await act(async () => {
+      await capturedState!.updateArtifactWithFile('art-dataset', file);
+    });
+
+    await waitFor(() => {
+      expect(capturedState!.currentScanId).toBe('scan-mock-001');
+    });
+
+    // 2. Load graph for Scan A
+    await act(async () => {
+      await capturedState!.loadEvidenceGraph();
+    });
+
+    // Assert fetchGraphExport was called with the scan's batch_id
+    expect(fetchGraphExportMock).toHaveBeenCalledWith('batch-mock-001');
+
+    // Assert graph for Scan A is loaded with 5 nodes
+    expect(capturedState!.graphNodes).toHaveLength(5);
+    expect(capturedState!.graphDigest).toBe('digest_scan_a_12345');
+
+    // 3. Prepare a deferred slow response for Scan A that hangs in flight
+    let slowResolve: (val: any) => void;
+    const slowPromise = new Promise(resolve => {
+      slowResolve = resolve;
+    });
+
+    (mockApiModule.mock as Record<string, unknown>).fetchGraphExport = vi.fn(() => slowPromise);
+
+    // Trigger slow in-flight fetch for Scan A
+    let inflightLoad: Promise<void>;
+    act(() => {
+      inflightLoad = capturedState!.loadEvidenceGraph();
+    });
+
+    // 4. Operator clicks "New Investigation" (resetInvestigation)
+    act(() => {
+      capturedState!.resetInvestigation();
+    });
+
+    // Assert graphNodes is empty immediately upon reset
+    expect(capturedState!.graphNodes).toHaveLength(0);
+    expect(capturedState!.graphEdges).toHaveLength(0);
+    expect(capturedState!.graphDigest).toBe('');
+
+    // 5. Simulate the slow response from Scan A arriving AFTER the reset
+    await act(async () => {
+      slowResolve!({
+        nodes: scanANodes,
+        edges: [
+          { source_id: 'node_1', target_id: 'node_2', edge_type: 'CONTAINS_SAMPLE' },
+        ],
+        graph_digest: 'digest_scan_a_12345',
+      });
+      await inflightLoad!;
+    });
+
+    // Assert the late response was DROPPED — graph remains empty
+    expect(capturedState!.graphNodes).toHaveLength(0);
+    expect(capturedState!.graphEdges).toHaveLength(0);
+    expect(capturedState!.graphDigest).toBe('');
+  });
+});

@@ -21,7 +21,7 @@ const sectionVariants = {
 };
 
 export const ResultsPage: React.FC = () => {
-  const { scanSession, trustScore, isScanCompleted } = useInvestigation();
+  const { scanSession, trustScore, isScanCompleted, currentScanId } = useInvestigation();
   const hasRunScan = Boolean(scanSession || trustScore || isScanCompleted);
 
   if (!hasRunScan) {
@@ -73,7 +73,7 @@ export const ResultsPage: React.FC = () => {
 
       <motion.section variants={sectionVariants}>
         {/* 5. Directed Evidence & Lineage Graph */}
-        <EvidenceGraph />
+        <EvidenceGraph key={currentScanId || 'empty-scan'} />
       </motion.section>
 
       <motion.section variants={sectionVariants}>

@@ -22,9 +22,12 @@ router = APIRouter(prefix="/graph", tags=["Evidence & Lineage Graph"])
 
 
 @router.get("/export", response_model=ResponseEnvelope[GraphExport])
-def export_evidence_graph(sign: bool = Query(False)) -> ResponseEnvelope[GraphExport]:
-    """Export the complete directed property graph sealed with a canonical SHA-256 digest."""
-    export_data = default_graph_engine.export_graph()
+def export_evidence_graph(
+    batch_id: Optional[str] = Query(None, description="Optional batch_id to scope export to single scan subgraph"),
+    sign: bool = Query(False),
+) -> ResponseEnvelope[GraphExport]:
+    """Export the directed property graph (optionally scoped to batch_id) sealed with a canonical SHA-256 digest."""
+    export_data = default_graph_engine.export_graph(batch_id=batch_id)
     if sign:
         from app.crypto.signer import default_signer
         export_data.signature = default_signer.sign_hash(export_data.graph_digest)

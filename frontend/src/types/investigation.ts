@@ -17,6 +17,7 @@ export interface ArtifactItem {
     recordsCount?: number;
     format?: string;
     signature?: string;
+    modelId?: string;
   };
 }
 

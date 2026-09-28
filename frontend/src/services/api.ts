@@ -407,15 +407,18 @@ class ApiService {
 
   // ── Evidence Graph ──────────────────────────────────────────────────────────
 
-  /** Export the complete directed property graph from the backend. */
-  async fetchGraphExport(): Promise<BackendGraphExport | null> {
+  /** Export the directed property graph from the backend (optionally scoped to batchId). */
+  async fetchGraphExport(batchId?: string): Promise<BackendGraphExport | null> {
     try {
-      const res = await fetch(`${this.baseUrl}/graph/export`);
+      const url = batchId
+        ? `${this.baseUrl}/graph/export?batch_id=${encodeURIComponent(batchId)}`
+        : `${this.baseUrl}/graph/export`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const envelope: ApiResponse<BackendGraphExport> = await res.json();
       return envelope.data ?? null;
     } catch (e) {
-      console.warn('[TRUST-CV Service] Graph export using air-gapped cache:', e);
+      console.warn('[TRUST-CV Service] Graph export error:', e);
       return null;
     }
   }

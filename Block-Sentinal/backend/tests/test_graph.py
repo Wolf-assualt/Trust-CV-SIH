@@ -235,3 +235,52 @@ def test_api_graph_endpoints(temp_graph_engine):
     assert risk_data["data"]["name"] == "API_Tester"
     assert risk_data["data"]["total_batches"] >= 1
     assert risk_data["data"]["flagged_findings_count"] >= 1
+
+
+def test_export_graph_scoped_by_batch_id():
+    """Verify that exporting graph with batch_id isolates that scan's subgraph."""
+    from app.graph.engine import EvidenceGraphEngine
+    engine = EvidenceGraphEngine()
+    engine.build_lineage(
+        contributor_id="c_shared",
+        batch_id="batch_A",
+        sample_ids=["sample_A1", "sample_A2"],
+        findings=[{"finding_id": "f_A", "description": "Finding A"}],
+    )
+    engine.build_lineage(
+        contributor_id="c_shared",
+        batch_id="batch_B",
+        sample_ids=["sample_B1", "sample_B2", "sample_B3"],
+        findings=[{"finding_id": "f_B", "description": "Finding B"}],
+    )
+    # Total graph has nodes from both batches
+    global_export = engine.export_graph()
+    assert global_export.node_count >= 8
+
+    # Batch A scoped export
+    export_A = engine.export_graph(batch_id="batch_A")
+    node_ids_A = {n.id for n in export_A.nodes}
+    assert "batch_A" in node_ids_A
+    assert "sample_A1" in node_ids_A
+    assert "sample_A2" in node_ids_A
+    assert "f_A" in node_ids_A
+    assert "batch_B" not in node_ids_A
+    assert "sample_B1" not in node_ids_A
+    assert "sample_B2" not in node_ids_A
+    assert "sample_B3" not in node_ids_A
+    assert "f_B" not in node_ids_A
+
+    # Batch B scoped export
+    export_B = engine.export_graph(batch_id="batch_B")
+    node_ids_B = {n.id for n in export_B.nodes}
+    assert "batch_B" in node_ids_B
+    assert "sample_B1" in node_ids_B
+    assert "f_B" in node_ids_B
+    assert "batch_A" not in node_ids_B
+    assert "sample_A1" not in node_ids_B
+
+    # Nonexistent batch returns empty graph
+    export_none = engine.export_graph(batch_id="nonexistent_batch")
+    assert export_none.node_count == 0
+    assert len(export_none.nodes) == 0
+    assert len(export_none.edges) == 0

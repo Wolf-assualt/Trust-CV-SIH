@@ -1,0 +1,144 @@
+/* ==========================================================================
+   EvidenceGraph — Animated provenance graph styling
+   Ported from Block-Sentinal dashboard.css, using frontend theme tokens.
+   ========================================================================== */
+
+/* ── Node pulse keyframes ─────────────────────────────────────────────────── */
+
+/** One-time entrance pulse for newly mounted / newly arrived nodes. */
+@keyframes trustcv-node-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); stroke-width: 3px; }
+  100% { transform: scale(1); }
+}
+
+/** Continuous pulsing red halo for critical / quarantined nodes. */
+@keyframes trustcv-node-incident {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  50%  { transform: scale(1.25); opacity: 0.4; stroke-width: 3.5px; }
+  100% { transform: scale(1);   opacity: 0.9; }
+}
+
+/** Fade-in for nodes that arrive during live polling (strictly opacity, no translate reset). */
+@keyframes trustcv-node-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Node state classes ───────────────────────────────────────────────────── */
+
+.ev-graph-node-enter {
+  animation: trustcv-node-fadein 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ev-graph-node-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: trustcv-node-pulse 1.2s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+
+.ev-graph-node-incident {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: trustcv-node-incident 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+/* ── Particle glow ────────────────────────────────────────────────────────── */
+
+.ev-graph-particle {
+  opacity: 0.85;
+}
+
+.ev-graph-particle--normal {
+  color: var(--accent-text);
+}
+
+.ev-graph-particle--warning {
+  color: var(--warning);
+}
+
+.ev-graph-particle--critical {
+  color: var(--critical);
+}
+
+/* ── Hover tooltip ────────────────────────────────────────────────────────── */
+
+.ev-graph-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 60;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+  opacity: 0;
+  transform: translate(-50%, -120%);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  min-width: 220px;
+  max-width: 340px;
+}
+
+.ev-graph-tooltip.visible {
+  opacity: 1;
+  transform: translate(-50%, -105%);
+}
+
+.ev-graph-tooltip-title {
+  font-weight: 800;
+  font-size: 11px;
+  margin-bottom: 0.35rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.25rem;
+  gap: 8px;
+}
+
+.ev-graph-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.ev-graph-tooltip-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ev-graph-tooltip-val {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+}
+
+.ev-graph-tooltip-tag {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── Reduced motion — no particles, no infinite pulses ────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ev-graph-node-pulse,
+  .ev-graph-node-incident,
+  .ev-graph-node-enter {
+    animation: none !important;
+  }
+  .ev-graph-particle {
+    display: none !important;
+  }
+}

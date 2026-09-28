@@ -845,8 +845,101 @@ class EvidenceGraphEngine:
             total_edges=len(self.edges),
         )
 
-    def export_graph(self) -> GraphExport:
-        """Export sorted, deterministic graph snapshot sealed with canonical SHA-256 digest."""
+    def export_graph(self, batch_id: Optional[str] = None) -> GraphExport:
+        """Export sorted, deterministic graph snapshot sealed with canonical SHA-256 digest.
+        
+        If batch_id is provided, returns only that scan's connected subgraph.
+        """
+        if batch_id is not None:
+            included_node_ids: Set[str] = set()
+            if batch_id in self.nodes:
+                included_node_ids.add(batch_id)
+
+            for nid, node in self.nodes.items():
+                props = node.properties or {}
+                if (
+                    props.get("batch_id") == batch_id
+                    or props.get("dataset_id") == batch_id
+                    or props.get("scan_id") == batch_id
+                ):
+                    included_node_ids.add(nid)
+
+            if not included_node_ids:
+                payload = {"nodes": [], "edges": []}
+                return GraphExport(
+                    nodes=[],
+                    edges=[],
+                    node_count=0,
+                    edge_count=0,
+                    graph_digest=canonical_json_hash(payload),
+                )
+
+            visited: Set[str] = set(included_node_ids)
+            queue: deque[str] = deque(included_node_ids)
+
+            while queue:
+                curr = queue.popleft()
+                for edge in self._out_edges.get(curr, []):
+                    target = edge.target_id
+                    target_node = self.nodes.get(target)
+                    if not target_node:
+                        continue
+                    if target_node.node_type in (NodeType.DATASET, NodeType.DATASET_BATCH) and target != batch_id:
+                        continue
+                    t_props = target_node.properties or {}
+                    if t_props.get("batch_id") and t_props.get("batch_id") != batch_id:
+                        continue
+                    if t_props.get("dataset_id") and t_props.get("dataset_id") != batch_id:
+                        continue
+
+                    if target not in visited:
+                        visited.add(target)
+                        if target_node.node_type != NodeType.CONTRIBUTOR:
+                            queue.append(target)
+
+                for edge in self._in_edges.get(curr, []):
+                    source = edge.source_id
+                    source_node = self.nodes.get(source)
+                    if not source_node:
+                        continue
+                    if source_node.node_type in (NodeType.DATASET, NodeType.DATASET_BATCH) and source != batch_id:
+                        continue
+                    s_props = source_node.properties or {}
+                    if s_props.get("batch_id") and s_props.get("batch_id") != batch_id:
+                        continue
+                    if s_props.get("dataset_id") and s_props.get("dataset_id") != batch_id:
+                        continue
+
+                    if source not in visited:
+                        visited.add(source)
+                        if source_node.node_type != NodeType.CONTRIBUTOR:
+                            queue.append(source)
+
+            filtered_nodes = [self.nodes[nid] for nid in visited if nid in self.nodes]
+            filtered_edges = [
+                e for e in self.edges
+                if e.source_id in visited and e.target_id in visited
+            ]
+
+            sorted_nodes = sorted(filtered_nodes, key=lambda n: n.id)
+            sorted_edges = sorted(
+                filtered_edges,
+                key=lambda e: (e.source_id, e.target_id, e.edge_type.value),
+            )
+            payload = {
+                "nodes": [n.model_dump() for n in sorted_nodes],
+                "edges": [e.model_dump() for e in sorted_edges],
+            }
+            graph_digest = canonical_json_hash(payload)
+
+            return GraphExport(
+                nodes=sorted_nodes,
+                edges=sorted_edges,
+                node_count=len(sorted_nodes),
+                edge_count=len(sorted_edges),
+                graph_digest=graph_digest,
+            )
+
         sorted_nodes = sorted(self.nodes.values(), key=lambda n: n.id)
         sorted_edges = sorted(
             self.edges,

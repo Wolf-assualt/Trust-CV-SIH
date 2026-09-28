@@ -1,3 +1,4 @@
+import { normalizeStatus } from '../utils/statusNormalize';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { apiService, type ScanSession } from '../services/api';
 import type {
@@ -115,7 +116,8 @@ interface InvestigationContextType {
   /** Last backend/API error surfaced to the operator. */
   backendError: string | null;
   refreshLedgerVerification: () => Promise<void>;
-  loadEvidenceGraph: () => Promise<void>;
+  clearGraphState: () => void;
+  loadEvidenceGraph: (explicitBatchId?: string) => Promise<void>;
   refreshAnalystDecisions: (entityId?: string) => Promise<void>;
   submitAnalystDecision: (
     decision: AnalystDecision,
@@ -182,6 +184,12 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
     const artifact = artifacts.find(a => a.id === artifactId);
     const isDataset = artifact?.type === 'dataset';
     if (isDataset) {
+      // Clear previous graph, stop old polling, and increment generation immediately
+      clearGraphState();
+      stopAllPolling();
+      scanGenerationRef.current += 1;
+      currentBatchIdRef.current = null;
+      scanSessionRef.current = null;
       // Mark uploading immediately so the UI shows progress.
       setArtifacts(prev => prev.map(art => art.id === artifactId ? {
         ...art,
@@ -206,6 +214,8 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         }
         const session = await apiService.uploadAndScanDataset(file, undefined, undefined, activeModelId);
+        scanSessionRef.current = session;
+        currentBatchIdRef.current = session.batch_id ?? null;
         setCurrentScanId(session.scan_id);
         setScanSession(session);
         // Update the artifact card with real values from the backend response.
@@ -298,6 +308,12 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const uploadOneOffCheck = async (targetFile: File, baselineFile?: File) => {
+    clearGraphState();
+    stopAllPolling();
+    scanGenerationRef.current += 1;
+    currentBatchIdRef.current = null;
+    scanSessionRef.current = null;
+
     setArtifacts(prev => prev.map(art => art.type === 'dataset' ? {
       ...art,
       filename: targetFile.name,
@@ -322,6 +338,8 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
       const session = await apiService.uploadAndScanDataset(targetFile, baselineFile, undefined, activeModelId);
+      scanSessionRef.current = session;
+      currentBatchIdRef.current = session.batch_id ?? null;
       setCurrentScanId(session.scan_id);
       setScanSession(session);
 
@@ -372,6 +390,11 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const clearArtifacts = () => {
+    stopAllPolling();
+    scanGenerationRef.current += 1;
+    currentBatchIdRef.current = null;
+    scanSessionRef.current = null;
+    clearGraphState();
     setArtifacts(INITIAL_ARTIFACTS);
     setCurrentScanId(null);
     setScanSession(null);
@@ -437,8 +460,50 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [analystDecisions, setAnalystDecisions] = useState<LedgerEventRecord[]>([]);
   const [backendError, setBackendError] = useState<string | null>(null);
 
-  // Elapsed timer — increments while scanning is in progress.
+  // Polling, session, and generation tracking refs
+  const scanIntervalRef = useRef<number | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
+  const graphPollIntervalRef = useRef<number | null>(null);
+  const scanGenerationRef = useRef<number>(0);
+  const currentBatchIdRef = useRef<string | null>(null);
+  const scanSessionRef = useRef<ScanSession | null>(null);
+
+  // Synchronize scanSessionRef and currentBatchIdRef
+  useEffect(() => {
+    scanSessionRef.current = scanSession;
+    currentBatchIdRef.current = scanSession?.batch_id ?? null;
+  }, [scanSession]);
+
+  const clearGraphState = useCallback(() => {
+    setGraphNodes([]);
+    setGraphEdges([]);
+    setGraphDigest('');
+    setSelectedGraphNode(null);
+  }, []);
+
+  const stopAllPolling = useCallback(() => {
+    if (scanIntervalRef.current !== null) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    if (timerIntervalRef.current !== null) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    if (graphPollIntervalRef.current !== null) {
+      clearInterval(graphPollIntervalRef.current);
+      graphPollIntervalRef.current = null;
+    }
+  }, []);
+
+  // Cleanup all polling on unmount
+  useEffect(() => {
+    return () => {
+      stopAllPolling();
+    };
+  }, [stopAllPolling]);
+
+  // Elapsed timer — increments while scanning is in progress.
   useEffect(() => {
     if (isScanning) {
       timerIntervalRef.current = window.setInterval(
@@ -446,28 +511,49 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
         1000,
       );
     } else {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
     }
-    return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
   }, [isScanning]);
 
   /**
-   * Pull the authoritative evidence graph from the backend.
-   * If the backend is unreachable the graph stays EMPTY (UNAVAILABLE) — the
-   * frontend never reconstructs authoritative relationships locally.
+   * Pull the authoritative evidence graph from the backend scoped to current batch_id.
+   * If the backend is unreachable or no batch is active, the graph stays EMPTY.
+   * Drops results if scan generation or batch_id changed while in flight.
    */
-  const loadEvidenceGraph = useCallback(async () => {
+  const loadEvidenceGraph = useCallback(async (explicitBatchId?: string) => {
+    const batchId = explicitBatchId || currentBatchIdRef.current;
+    if (!batchId) {
+      clearGraphState();
+      return;
+    }
+    const generation = scanGenerationRef.current;
     try {
-      const exportData = await apiService.fetchGraphExport();
+      const exportData = await apiService.fetchGraphExport(batchId);
+      // Drop result if generation changed or batch_id no longer equals current batch_id
+      if (scanGenerationRef.current !== generation || currentBatchIdRef.current !== batchId) {
+        return;
+      }
       if (exportData && Array.isArray(exportData.nodes) && Array.isArray(exportData.edges)) {
-        setGraphNodes(exportData.nodes.map((n: any) => ({
-          id: n.id || n.canonical_identity || n.digest,
-          label: n.label || n.node_type,
-          nodeType: String(n.node_type || 'ENTITY').toUpperCase(),
-          properties: n.properties || {},
-          status: (n.properties && n.properties.status) ? n.properties.status : 'UNKNOWN',
-          digest: n.digest || n.canonical_identity || '',
-        })));
+        setGraphNodes(exportData.nodes.map((n: any) => {
+          const rawStatus = n.properties?.status ?? n.properties?.severity ?? 'UNKNOWN';
+          return {
+            id: n.id || n.canonical_identity || n.digest,
+            label: n.label || n.node_type,
+            nodeType: String(n.node_type || 'ENTITY').toUpperCase(),
+            properties: n.properties || {},
+            status: normalizeStatus(rawStatus),
+            digest: n.digest || n.canonical_identity || '',
+          };
+        }));
         setGraphEdges(exportData.edges.map(e => ({
           id: `${e.source_id}->${e.target_id}:${e.edge_type}`,
           sourceId: e.source_id,
@@ -477,12 +563,14 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
         })));
         setGraphDigest(exportData.graph_digest || '');
       } else {
-        setGraphNodes([]); setGraphEdges([]); setGraphDigest('');
+        clearGraphState();
       }
     } catch {
-      setGraphNodes([]); setGraphEdges([]); setGraphDigest('');
+      if (scanGenerationRef.current === generation && currentBatchIdRef.current === batchId) {
+        clearGraphState();
+      }
     }
-  }, []);
+  }, [clearGraphState]);
 
   const refreshLedgerVerification = useCallback(async () => {
     try {
@@ -538,21 +626,22 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const resetInvestigation = () => {
+    stopAllPolling();
+    scanGenerationRef.current += 1;
+    currentBatchIdRef.current = null;
+    scanSessionRef.current = null;
+    clearGraphState();
     setPhase('launch');
     setFindings([]);
     setImageResults([]);
     setTrustScore(null);
     setRecommendations([]);
     setSelectedFinding(null);
-    setSelectedGraphNode(null);
     setCurrentScanId(null);
     setScanSession(null);
     setLedgerVerification(null);
     setAnalystDecisions([]);
     setBackendError(null);
-    setGraphNodes([]);
-    setGraphEdges([]);
-    setGraphDigest('');
     setArtifacts(INITIAL_ARTIFACTS);
     setIsScanning(false);
     setIsScanCompleted(false);
@@ -570,14 +659,14 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
    * Nothing is assembled or signed in the browser.
    */
   const exportEvidencePackage = async () => {
-    if (!scanSession) {
+    if (!scanSession || !scanSession.batch_id) {
       window.alert('Export UNAVAILABLE: no backend scan session is loaded.');
       return;
     }
     try {
       const [overview, graph, ledger] = await Promise.all([
         apiService.fetchOverview(),
-        apiService.fetchGraphExport(),
+        apiService.fetchGraphExport(scanSession.batch_id),
         apiService.verifyLedger(),
       ]);
       const payload = {
@@ -603,14 +692,14 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const exportReport = async () => {
-    if (!scanSession) {
+    if (!scanSession || !scanSession.batch_id) {
       window.alert('Export UNAVAILABLE: no backend scan session is loaded.');
       return;
     }
     try {
       const [ledger, graph] = await Promise.all([
         apiService.verifyLedger(),
-        apiService.fetchGraphExport(),
+        apiService.fetchGraphExport(scanSession.batch_id),
       ]);
       const report = {
         report_id: `REP-${scanSession.scan_id.substring(0, 10).toUpperCase()}`,
@@ -636,8 +725,6 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // ── Scan polling (formerly "runScanSimulation") ────────────────────────────
-
-  const scanIntervalRef = useRef<number | null>(null);
 
   /**
    * Finalize the scan: clear the polling interval, mark 100% complete, and
@@ -930,8 +1017,13 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
 
           // Ledger verification and evidence graph come from the backend only.
           await refreshLedgerVerification();
-          await loadEvidenceGraph();
-          if (session.batch_id) await refreshAnalystDecisions(session.batch_id);
+          if (session.batch_id) {
+            currentBatchIdRef.current = session.batch_id;
+            await loadEvidenceGraph(session.batch_id);
+            await refreshAnalystDecisions(session.batch_id);
+          } else {
+            await loadEvidenceGraph();
+          }
 
           finalizeScan();
         }
@@ -957,6 +1049,9 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
       );
       return;
     }
+    clearGraphState();
+    stopAllPolling();
+    scanGenerationRef.current += 1;
     setIsScanning(true);
     setIsScanCompleted(false);
     setScanProgress(0);
@@ -970,12 +1065,7 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
     pollScanProgress();
   }, [currentScanId, pollScanProgress, setPhase]);
 
-  // Cleanup polling on unmount.
-  useEffect(() => {
-    return () => {
-      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
-    };
-  }, []);
+  // Polling intervals are cleaned up via stopAllPolling on unmount.
 
   return (
     <InvestigationContext.Provider value={{
@@ -989,7 +1079,7 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
       searchQuery, setSearchQuery, selectedFinding, setSelectedFinding, trustScore,
       setTrustScore, recommendations, setRecommendations, imageResults, quarantineImage,
       graphNodes, graphEdges, graphDigest, selectedGraphNode, setSelectedGraphNode,
-      focusNodeInGraph, ledgerVerification, analystDecisions, backendError,
+      clearGraphState, focusNodeInGraph, ledgerVerification, analystDecisions, backendError,
       refreshLedgerVerification, loadEvidenceGraph, refreshAnalystDecisions,
       submitAnalystDecision, resetInvestigation, exportReport, exportEvidencePackage, uploadOneOffCheck,
     }}>
