@@ -57,7 +57,7 @@ const STAGE_ENUM_TO_RESULT_KEYS: Record<string, string[]> = {
   COMPLETED: ['FINAL_VERDICT'],
 };
 
-interface InvestigationContextType {
+export interface InvestigationContextType {
   phase: Phase;
   setPhase: (phase: Phase) => void;
   theme: Theme;
@@ -130,7 +130,7 @@ interface InvestigationContextType {
   uploadOneOffCheck: (targetFile: File, baselineFile?: File) => Promise<void>;
 }
 
-const InvestigationContext = createContext<InvestigationContextType | null>(null);
+export const InvestigationContext = createContext<InvestigationContextType | null>(null);
 
 export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>('dark');

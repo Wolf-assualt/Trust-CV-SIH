@@ -203,7 +203,8 @@ export function formatNodeLabel(label: string): string {
   return clean;
 }
 
-export function isCriticalOrPoisoned(node: InputGraphNode): boolean {
+export function isCriticalOrPoisoned(node?: InputGraphNode | GraphNode | null): boolean {
+  if (!node) return false;
   const status = String(node.status || '').toLowerCase();
   const rawStatus = String(node.properties?.status || node.properties?.severity || '').toLowerCase();
   const label = String(node.label || '').toLowerCase();
@@ -236,7 +237,13 @@ export function layoutGraph(
     : (optionsOrPositions && typeof optionsOrPositions === "object" && "isExpanded" in optionsOrPositions
         ? (optionsOrPositions as any).isExpanded
         : false);
-  const existingMap = optionsOrPositions instanceof Map ? optionsOrPositions : null;
+  const existingMap = optionsOrPositions instanceof Map
+    ? optionsOrPositions
+    : (optionsOrPositions && typeof optionsOrPositions === "object" && "positions" in optionsOrPositions
+        ? (optionsOrPositions as any).positions instanceof Map
+          ? (optionsOrPositions as any).positions
+          : null
+        : null);
 
   const seen = new Set<string>();
   const nodes = rawNodes.filter(n => {
@@ -483,6 +490,9 @@ export function buildEdgePath(
   targetRadius: number = NODE_RADIUS,
   obstacles: Array<{ x: number; y: number; id?: string }> = [],
 ): string {
+  if (!isFiniteCoord(sx) || !isFiniteCoord(sy) || !isFiniteCoord(tx) || !isFiniteCoord(ty)) {
+    return '';
+  }
   // If target is to the right of source, start at RIGHT edge and end at LEFT edge
   if (tx > sx) {
     const x1 = Math.round(sx + sourceRadius);
@@ -593,7 +603,8 @@ function segmentsIntersect(
    Visual Helpers & Icons
    ════════════════════════════════════════════════════════════════════════════ */
 
-function getNodeColor(node: GraphNode): string {
+function getNodeColor(node?: GraphNode | InputGraphNode | null): string {
+  if (!node) return 'var(--accent)';
   switch (node.status) {
     case 'critical': return 'var(--critical)';
     case 'warning':  return 'var(--warning)';
@@ -602,7 +613,8 @@ function getNodeColor(node: GraphNode): string {
   }
 }
 
-function getNodeBg(node: GraphNode): string {
+function getNodeBg(node?: GraphNode | InputGraphNode | null): string {
+  if (!node) return 'var(--accent-surface)';
   switch (node.status) {
     case 'critical': return 'var(--critical-surface)';
     case 'warning':  return 'var(--warning-surface)';
@@ -681,6 +693,7 @@ const EvidenceGraphInner: React.FC = () => {
     selectedGraphNode,
     setSelectedGraphNode,
     isScanning,
+    isScanCompleted,
     loadEvidenceGraph,
   } = useInvestigation();
 
@@ -696,31 +709,55 @@ const EvidenceGraphInner: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ mouseX: number; mouseY: number; initialX: number; initialY: number } | null>(null);
 
-  /* ── Deterministic Layout Calculation ───────────────────────────────────── */
+  /* ── Deterministic Layout Calculation & Position Cache ─────────────────── */
 
-  const nodeIdsKey = useMemo(() => graphNodes.map(n => n.id).sort().join(','), [graphNodes]);
+  const nodePositionsCache = useRef<Map<string, { x: number; y: number }>>(new Map());
 
-  // Reset zoom/pan, hover, selection, and cluster expansion on load and whenever the node set changes
+  // Reset zoom/pan, hover, selection, and clear position cache ONLY on scan session changes
   useEffect(() => {
+    nodePositionsCache.current.clear();
     setZoomTransform({ x: 0, y: 0, k: 1 });
     setHoveredNodeId(null);
     setHoveredEdgeId(null);
     setTooltip(null);
     setIsClusterExpanded(false);
     setIsGraphActive(false);
-  }, [currentScanId, graphDigest, nodeIdsKey]);
+  }, [currentScanId]);
+
+  const nodeIdsKey = useMemo(() => graphNodes.map(n => n.id).sort().join(','), [graphNodes]);
   const edgeIdsKey = useMemo(() => graphEdges.map(e => e.id).sort().join(','), [graphEdges]);
 
   const laidOutNodes = useMemo(() => {
-    if (graphNodes.length === 0) return [];
-    return layoutGraph(
+    if (graphNodes.length === 0) {
+      nodePositionsCache.current.clear();
+      return [];
+    }
+    const nodes = layoutGraph(
       graphNodes as InputGraphNode[],
       graphEdges,
-      isClusterExpanded,
+      { isExpanded: isClusterExpanded, positions: nodePositionsCache.current },
       GRAPH_W,
       GRAPH_H,
     );
-  }, [nodeIdsKey, edgeIdsKey, isClusterExpanded]);
+    // Cache the laid-out positions so identical IDs never jump or recompute
+    nodes.forEach(n => {
+      if (n && n.id && isFiniteCoord(n.x) && isFiniteCoord(n.y)) {
+        nodePositionsCache.current.set(n.id, { x: n.x, y: n.y });
+      }
+    });
+    return nodes;
+  }, [nodeIdsKey, edgeIdsKey, isClusterExpanded, graphNodes]);
+
+  // Safe lookups of active selected and hovered nodes by id with null checks
+  const activeSelectedNode = useMemo(() => {
+    if (!selectedGraphNode || !selectedGraphNode.id) return null;
+    return laidOutNodes.find(n => n.id === selectedGraphNode.id) || null;
+  }, [selectedGraphNode, laidOutNodes]);
+
+  const activeHoveredNode = useMemo(() => {
+    if (!hoveredNodeId) return null;
+    return laidOutNodes.find(n => n.id === hoveredNodeId) || null;
+  }, [hoveredNodeId, laidOutNodes]);
 
   // Node position map
   const nodePosMap = useMemo(() => {
@@ -745,8 +782,10 @@ const EvidenceGraphInner: React.FC = () => {
     const list: { stage: StageName; name: string; x: number }[] = [];
     STAGE_ORDER.forEach(st => {
       if (seenStages.has(st)) {
-        const stageNodes = laidOutNodes.filter(n => getNodeStageName(n.nodeType, n.status) === st);
-        const avgX = stageNodes.length > 0 ? stageNodes[0].x : CANONICAL_STAGE_X[st];
+        const stageNodes = laidOutNodes.filter(n => getNodeStageName(n.nodeType, n.status) === st && isFiniteCoord(n.x));
+        const avgX = stageNodes.length > 0 && isFiniteCoord(stageNodes[0].x)
+          ? stageNodes[0].x
+          : CANONICAL_STAGE_X[st];
         list.push({
           stage: st,
           name: STAGE_DISPLAY_NAMES[st],
@@ -773,15 +812,16 @@ const EvidenceGraphInner: React.FC = () => {
 
   const connectedNodeIds = useMemo(() => {
     const ids = new Set<string>();
-    if (selectedGraphNode) {
-      ids.add(selectedGraphNode.id);
+    if (activeSelectedNode) {
+      ids.add(activeSelectedNode.id);
       graphEdges.forEach((edge: GraphEdgeType) => {
-        if (edge.sourceId === selectedGraphNode.id) ids.add(edge.targetId);
-        if (edge.targetId === selectedGraphNode.id) ids.add(edge.sourceId);
+        if (!edge) return;
+        if (edge.sourceId === activeSelectedNode.id) ids.add(edge.targetId);
+        if (edge.targetId === activeSelectedNode.id) ids.add(edge.sourceId);
       });
     }
     return ids;
-  }, [selectedGraphNode, graphEdges]);
+  }, [activeSelectedNode, graphEdges]);
 
   /* ── Hover Connections ──────────────────────────────────────────────────── */
 
@@ -803,7 +843,9 @@ const EvidenceGraphInner: React.FC = () => {
   }, [laidOutNodes]);
 
   const obstaclesList = useMemo(() => {
-    return laidOutNodes.map(n => ({ x: n.x, y: n.y, id: n.id }));
+    return laidOutNodes
+      .filter(n => n && isFiniteCoord(n.x) && isFiniteCoord(n.y))
+      .map(n => ({ x: n.x, y: n.y, id: n.id }));
   }, [laidOutNodes]);
 
   /* ── Edges using Straight Lines from Right Edge to Left Edge ────────────── */
@@ -1083,7 +1125,7 @@ const EvidenceGraphInner: React.FC = () => {
   const liveGraphIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!isScanning) {
+    if (!isScanning || isScanCompleted) {
       if (liveGraphIntervalRef.current !== null) {
         clearInterval(liveGraphIntervalRef.current);
         liveGraphIntervalRef.current = null;
@@ -1099,7 +1141,7 @@ const EvidenceGraphInner: React.FC = () => {
         liveGraphIntervalRef.current = null;
       }
     };
-  }, [isScanning, loadEvidenceGraph]);
+  }, [isScanning, isScanCompleted, loadEvidenceGraph]);
 
   /* ── Tooltip Handlers ───────────────────────────────────────────────────── */
 
@@ -1391,7 +1433,7 @@ const EvidenceGraphInner: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: selectedGraphNode ? '1fr 340px' : '1fr',
+          gridTemplateColumns: activeSelectedNode ? '1fr 340px' : '1fr',
           gap: '16px',
           flex: 1,
           minHeight: 0,
@@ -1557,16 +1599,16 @@ const EvidenceGraphInner: React.FC = () => {
                 {edgesWithMeta.map(em => {
                   const isHoveredEdge = hoveredEdgeId === em.edge.id;
                   const isDirectHovered = hoveredConnectedEdgeIds.has(em.edge.id);
-                  const isSelectedConnected = selectedGraphNode
+                  const isSelectedConnected = activeSelectedNode
                     ? connectedNodeIds.has(em.edge.sourceId) && connectedNodeIds.has(em.edge.targetId)
                     : false;
 
                   let edgeOpacity = 0.7;
-                  if (hoveredNodeId) {
+                  if (activeHoveredNode) {
                     edgeOpacity = isDirectHovered ? 1 : 0.1;
                   } else if (hoveredEdgeId) {
                     edgeOpacity = isHoveredEdge ? 1 : 0.2;
-                  } else if (selectedGraphNode) {
+                  } else if (activeSelectedNode) {
                     edgeOpacity = isSelectedConnected ? 1 : 0.15;
                   } else if (em.isColumnSkipping) {
                     edgeOpacity = 0.25;
@@ -1627,16 +1669,16 @@ const EvidenceGraphInner: React.FC = () => {
                     console.warn('[EvidenceGraph] Skipped rendering node with invalid id or non-finite coords:', node);
                     return null;
                   }
-                  const isSelected = selectedGraphNode?.id === node.id;
-                  const isHovered = hoveredNodeId === node.id;
+                  const isSelected = activeSelectedNode?.id === node.id;
+                  const isHovered = activeHoveredNode?.id === node.id;
                   const isConnected = connectedNodeIds.has(node.id);
                   const isPoisoned = isCriticalOrPoisoned(node);
 
                   let opacity = 1;
-                  if (hoveredNodeId) {
-                    const isHoverDirect = hoveredNodeId === node.id || hoveredConnectedEdgeIds.size === 0;
+                  if (activeHoveredNode) {
+                    const isHoverDirect = activeHoveredNode.id === node.id || hoveredConnectedEdgeIds.size === 0;
                     opacity = isHoverDirect ? 1 : 0.25;
-                  } else if (selectedGraphNode) {
+                  } else if (activeSelectedNode) {
                     opacity = isConnected ? 1 : 0.25;
                   }
 
@@ -1736,44 +1778,44 @@ const EvidenceGraphInner: React.FC = () => {
           )}
 
           {/* Hover Tooltip (shows full type caption and metadata) */}
-          {tooltip && (
+          {tooltip && activeHoveredNode && (
             <div
               className="ev-graph-tooltip visible"
               style={{
                 position: 'absolute',
-                left: `${Math.min(92, Math.max(8, (tooltip.x / GRAPH_W) * 100))}%`,
-                top: `${Math.min(88, Math.max(12, (tooltip.y / GRAPH_H) * 100))}%`,
+                left: `${Math.min(92, Math.max(8, ((isFiniteCoord(tooltip.x) ? tooltip.x : GRAPH_W / 2) / GRAPH_W) * 100))}%`,
+                top: `${Math.min(88, Math.max(12, ((isFiniteCoord(tooltip.y) ? tooltip.y : GRAPH_H / 2) / GRAPH_H) * 100))}%`,
                 pointerEvents: 'none',
               }}
             >
               <div className="ev-graph-tooltip-title">
-                <span>{tooltip.node.label || tooltip.node.id}</span>
+                <span>{activeHoveredNode.label || activeHoveredNode.id}</span>
                 <span
                   className="ev-graph-tooltip-tag"
                   style={{
-                    color: getNodeColor(tooltip.node),
-                    borderColor: getNodeColor(tooltip.node),
+                    color: getNodeColor(activeHoveredNode),
+                    borderColor: getNodeColor(activeHoveredNode),
                   }}
                 >
-                  {String(tooltip.node.nodeType)}
+                  {String(activeHoveredNode.nodeType)}
                 </span>
               </div>
               <div className="ev-graph-tooltip-row">
                 <span className="ev-graph-tooltip-label">Entity ID:</span>
-                <span className="ev-graph-tooltip-val">{tooltip.node.id}</span>
+                <span className="ev-graph-tooltip-val">{activeHoveredNode.id}</span>
               </div>
-              {tooltip.node.digest && (
+              {activeHoveredNode.digest && (
                 <div className="ev-graph-tooltip-row">
                   <span className="ev-graph-tooltip-label">SHA-256:</span>
                   <span className="ev-graph-tooltip-val" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px' }}>
-                    {tooltip.node.digest.substring(0, 16)}…
+                    {activeHoveredNode.digest.substring(0, 16)}…
                   </span>
                 </div>
               )}
               <div className="ev-graph-tooltip-row">
                 <span className="ev-graph-tooltip-label">Status:</span>
-                <span className="ev-graph-tooltip-val" style={{ color: getNodeColor(tooltip.node), textTransform: 'capitalize' }}>
-                  {tooltip.node.status}
+                <span className="ev-graph-tooltip-val" style={{ color: getNodeColor(activeHoveredNode), textTransform: 'capitalize' }}>
+                  {activeHoveredNode.status}
                 </span>
               </div>
               <div className="ev-graph-tooltip-row">
@@ -1789,7 +1831,7 @@ const EvidenceGraphInner: React.FC = () => {
         </div>
 
         {/* Selected Node Details Drawer */}
-        {selectedGraphNode && (
+        {activeSelectedNode && (
           <div
             style={{
               backgroundColor: 'var(--surface-elevated)',
@@ -1808,11 +1850,11 @@ const EvidenceGraphInner: React.FC = () => {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: getNodeColor(selectedGraphNode), display: 'flex', alignItems: 'center' }}>
-                  {getNodeIcon(selectedGraphNode.nodeType)}
+                <span style={{ color: getNodeColor(activeSelectedNode), display: 'flex', alignItems: 'center' }}>
+                  {getNodeIcon(activeSelectedNode.nodeType)}
                 </span>
                 <Badge variant="default" size="sm">
-                  {selectedGraphNode.nodeType}
+                  {activeSelectedNode.nodeType}
                 </Badge>
               </div>
               <button
@@ -1832,7 +1874,7 @@ const EvidenceGraphInner: React.FC = () => {
 
             <div>
               <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>
-                {selectedGraphNode.label}
+                {activeSelectedNode.label}
               </div>
               <div
                 style={{
@@ -1842,11 +1884,11 @@ const EvidenceGraphInner: React.FC = () => {
                   marginTop: '2px',
                 }}
               >
-                {selectedGraphNode.id}
+                {activeSelectedNode.id}
               </div>
             </div>
 
-            {selectedGraphNode.digest && (
+            {activeSelectedNode.digest && (
               <div
                 style={{
                   backgroundColor: 'var(--terminal-bg)',
@@ -1858,17 +1900,20 @@ const EvidenceGraphInner: React.FC = () => {
                   wordBreak: 'break-all',
                 }}
               >
-                SHA256: {selectedGraphNode.digest}
+                SHA256: {activeSelectedNode.digest}
               </div>
             )}
 
             {/* Properties summary */}
-            {selectedGraphNode.properties && Object.keys(selectedGraphNode.properties).length > 0 && (
+            {activeSelectedNode.properties &&
+              typeof activeSelectedNode.properties === 'object' &&
+              !Array.isArray(activeSelectedNode.properties) &&
+              Object.keys(activeSelectedNode.properties).length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                   Properties
                 </div>
-                {Object.entries(selectedGraphNode.properties).slice(0, 8).map(([k, v]) => (
+                {Object.entries(activeSelectedNode.properties).slice(0, 8).map(([k, v]) => (
                   <div
                     key={k}
                     style={{
@@ -1946,7 +1991,9 @@ export class EvidenceGraphErrorBoundary extends React.Component<ErrorBoundaryPro
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.warn('[EvidenceGraph] ErrorBoundary caught crash:', error, errorInfo);
+    console.error('[EvidenceGraph] Error message:', error?.message);
+    console.error('[EvidenceGraph] Error stack:', error?.stack);
+    console.error('[EvidenceGraph] Component stack:', errorInfo?.componentStack);
   }
 
   handleReset = () => {
@@ -1976,6 +2023,23 @@ export class EvidenceGraphErrorBoundary extends React.Component<ErrorBoundaryPro
           <div style={{ color: 'var(--critical, #ef4444)', fontSize: '18px', fontWeight: 600 }}>
             Graph error - Reset view
           </div>
+          {this.state.error?.message && (
+            <div
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '12px',
+                color: 'var(--critical, #ef4444)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '6px',
+                padding: '8px 14px',
+                maxWidth: '650px',
+                wordBreak: 'break-word',
+              }}
+            >
+              {this.state.error.message}
+            </div>
+          )}
           <div style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '13px', maxWidth: '420px' }}>
             The evidence graph encountered a rendering error. Click below to safely reinitialize the graph.
           </div>
