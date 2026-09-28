@@ -249,7 +249,7 @@ class AssuranceReportEngine:
         return report
 
     @staticmethod
-    def verify_report(report: AssuranceReport) -> VerifyReportResponse:
+    def verify_report(report: AssuranceReport, algorithm: str = "ed25519") -> VerifyReportResponse:
         """Cryptographically audit an assurance report for tampering and valid digital signature."""
         discrepancies: List[str] = []
 
@@ -288,11 +288,12 @@ class AssuranceReportEngine:
                 f"Report digest mismatch: recomputed '{recomputed_digest}' does not match record '{report.report_digest}'."
             )
 
-        # 2. Verify Ed25519 digital signature
+        # 2. Verify digital signature
         signature_valid = KeyManager.verify_signature(
             public_key_pem=report.signer_public_key_pem,
             digest_hex=report.report_digest,
             signature_hex=report.signature,
+            algorithm=algorithm,
         )
         if not signature_valid:
             discrepancies.append(

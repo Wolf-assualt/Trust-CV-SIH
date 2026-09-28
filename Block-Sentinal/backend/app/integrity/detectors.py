@@ -4,7 +4,7 @@ Phase 3: All detectors emit findings with full provenance (detector_id, detector
 detector_parameters, created_at) and justified confidence (or null with documented basis).
 """
 import uuid
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -739,7 +739,11 @@ class TriggerCandidateDetector:
                             patch = img.crop(box).convert("L")
                             arr = np.array(patch, dtype=np.uint8)
 
-                            if not (arr == 0).all():
+                            if (arr == 0).all():
+                                if float(np.mean(img)) > 20.0:
+                                    sig = "CORNER_SOLID_BLACK_" + hash_bytes(arr.tobytes())
+                                    patch_signatures[sig].append(sample.sample_id)
+                            else:
                                 sig = hash_bytes(arr.tobytes())
                                 patch_signatures[sig].append(sample.sample_id)
                     except Exception:
@@ -845,10 +849,23 @@ class TriggerCandidateDetector:
 
                             patch = img.crop((x, y, x + scan_patch, y + scan_patch))
                             arr = np.array(patch.convert("L"), dtype=np.float32)
-                            if float(np.var(arr)) < 80.0:
-                                continue
+                            p_var = float(np.var(arr))
+                            p_mean = float(np.mean(arr))
 
-                            phash = compute_dhash(patch, hash_size=8)
+                            if p_var < 10.0 and p_mean < 5.0 and float(np.mean(img)) > 20.0:
+                                phash = "SOLID_BLACK_TRIGGER"
+                            elif p_var < 10.0 and p_mean > 250.0 and float(np.mean(img)) < 235.0:
+                                phash = "SOLID_WHITE_TRIGGER"
+                            elif p_var < 80.0:
+                                continue
+                            else:
+                                phash = compute_dhash(patch, hash_size=8)
+                                # Ignore degenerate gradient hashes (horizontal/vertical uniform splits)
+                                if phash in ("0000000000000000", "ffffffffffffffff"):
+                                    continue
+                                popcount = bin(int(phash, 16)).count("1")
+                                if popcount < 6 or popcount > 58:
+                                    continue
                             spatial_signatures[phash].append((sample.sample_id, (x, y)))
             except Exception:
                 continue
@@ -861,10 +878,28 @@ class TriggerCandidateDetector:
                 if len(distinct_hashes) < 2:
                     continue  # Exact duplicate files
 
+                # A localized backdoor trigger patch occurs once or twice per sample;
+                # a pattern repeating repeatedly across rows/columns in the same sample
+                # indicates a natural line, edge, or background texture.
+                sample_counts = Counter(e[0] for e in entries)
+                if any(cnt > 2 for cnt in sample_counts.values()):
+                    continue
+
                 if tuple(sorted(matched_sids)) in existing_corner_pairs:
                     continue
 
                 coords = [e[1] for e in entries]
+                xs_coords = [c[0] for c in coords]
+                ys_coords = [c[1] for c in coords]
+                if phash not in ("SOLID_BLACK_TRIGGER", "SOLID_WHITE_TRIGGER"):
+                    pop_cnt = bin(int(phash, 16)).count("1")
+                    # A localized backdoor trigger across samples is co-located in the same spatial region
+                    if (max(xs_coords) - min(xs_coords) > 24 or max(ys_coords) - min(ys_coords) > 24) and pop_cnt < 12:
+                        continue
+                else:
+                    if max(xs_coords) - min(xs_coords) > 24 or max(ys_coords) - min(ys_coords) > 24:
+                        continue
+
                 avg_x = sum(c[0] for c in coords) // len(coords)
                 avg_y = sum(c[1] for c in coords) // len(coords)
 
@@ -997,7 +1032,13 @@ class TriggerCandidateDetector:
                         variance = float(np.var(patch))
                         dark_ratio = float(np.mean(patch < 32))
                         light_ratio = float(np.mean(patch > 224))
-                        if variance >= 5000.0 and dark_ratio >= 0.20 and light_ratio >= 0.20:
+                        # Backdoor patch triggers exhibit strong bimodal contrast (predominantly extreme dark and light pixels)
+                        if (
+                            variance >= 6000.0
+                            and dark_ratio >= 0.25
+                            and light_ratio >= 0.25
+                            and (dark_ratio + light_ratio) >= 0.70
+                        ):
                             findings.append(
                                 IntegrityFinding(
                                     finding_id=str(uuid.uuid4()),

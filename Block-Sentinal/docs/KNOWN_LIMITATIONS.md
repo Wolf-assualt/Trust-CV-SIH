@@ -246,6 +246,36 @@ executed via the backend `POST /api/v1/inference/run` endpoint.
 
 ---
 
+### L-16: Low-Contrast and Blended Triggers (Subtle Perturbations)
+
+**What works:** High-contrast static localized patches, solid color blocks (black/white 8x8), checkerboards, diagonal stripes, and bright dot triggers.
+
+**What does not work:** Low-contrast, subtle blended watermarks, or imperceptible sinusoidal triggers where pixel variance and horizontal gradient differences fall below perceptual detection thresholds (`variance < 80.0` or dHash difference < 6 bits).
+
+**Why:** Backdoor detection thresholds are deliberately calibrated to differentiate attack triggers from natural smooth gradients, low-contrast sensor noise, and uniform terrain backgrounds to maintain zero false positives.
+
+---
+
+### L-17: Tiled, Distributed, and Global Triggers (Non-Localized)
+
+**What works:** Localized spatial triggers in corner regions and interior sliding windows constrained by spatial co-location (`span <= 24px`).
+
+**What does not work:** Spatially dispersed or global triggers, such as sparse pixels scattered across distant quadrants, periodic grid watermarks, or full-frame steganographic noise.
+
+**Why:** The sliding-window perceptual hash scanner requires spatial locality across matching samples to avoid conflating natural repeating image features (e.g. horizontal horizon lines, vertical structures, periodic scanlines) with adversarial triggers.
+
+---
+
+### L-18: Detection Thresholds Tuned on Synthetic Datasets
+
+**What works:** High recall across synthetic red-team triggers, BadNets benchmarks, and multi-spectral Earth Observation datasets (e.g. BigEarthNet-S2) with zero false positives.
+
+**What does not work:** Extreme high-dynamic-range (HDR) raw 16-bit sensor feeds with unconventional noise profiles or non-standard quantization may require threshold recalibration (specifically bimodal variance `variance >= 6000.0` and tail ratio thresholds).
+
+**Why:** Detector thresholds were empirically validated against synthetic attack batteries and standardized 8-bit / normalized EO sensor baselines to achieve defense-grade balance between recall and false-alarm suppression.
+
+---
+
 ## Coverage Limitation
 
 ### L-15: Approximately 36% of Mapped Attack Vectors Are Not Covered
@@ -283,6 +313,9 @@ See `ATTACK_COVERAGE.md` for the full breakdown.
 | L-13 | LiveMetrics/TerminalLog not streamed | Frontend | LOW |
 | L-14 | Inference/Manifest artifact slots local-only | Frontend | LOW |
 | L-15 | ~36% attack vector coverage gap | Overall | HIGH |
+| L-16 | Low-contrast / blended triggers undetectable | Data Integrity | MEDIUM |
+| L-17 | Non-localized / distributed triggers missed | Data Integrity | MEDIUM |
+| L-18 | Thresholds tuned on synthetic / 8-bit baselines | Data Integrity | LOW |
 
 ---
 

@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Optional, Union, Tuple
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ed25519, ec
 
 logger = logging.getLogger("trust_cv.crypto.signer")
 
@@ -82,21 +83,31 @@ class KeyManager:
         public_key_pem: Union[bytes, str],
         digest_hex: Union[str, bytes],
         signature_hex: str,
+        algorithm: str = "ed25519",
     ) -> bool:
-        """Verify an Ed25519 signature against the provided public key PEM."""
+        """Verify an Ed25519 or legacy ECDSA SECP256R1 signature against the provided public key PEM."""
         try:
             if isinstance(public_key_pem, str):
                 public_key_pem = public_key_pem.encode("utf-8")
             pubkey = serialization.load_pem_public_key(public_key_pem)
-            if not isinstance(pubkey, ed25519.Ed25519PublicKey):
-                return False
             sig_bytes = bytes.fromhex(signature_hex)
             if isinstance(digest_hex, str):
                 data = digest_hex.encode("utf-8")
             else:
                 data = digest_hex
-            pubkey.verify(sig_bytes, data)
-            return True
+
+            algo = (algorithm or "ed25519").lower().strip()
+            if algo in ("ed25519", "ed_25519"):
+                if isinstance(pubkey, ed25519.Ed25519PublicKey):
+                    pubkey.verify(sig_bytes, data)
+                    return True
+                return False
+            elif algo in ("ecdsa-p256", "ecdsa_p256", "ecdsa"):
+                if isinstance(pubkey, ec.EllipticCurvePublicKey):
+                    pubkey.verify(sig_bytes, data, ec.ECDSA(hashes.SHA256()))
+                    return True
+                return False
+            return False
         except (InvalidSignature, ValueError, TypeError, Exception):
             return False
 

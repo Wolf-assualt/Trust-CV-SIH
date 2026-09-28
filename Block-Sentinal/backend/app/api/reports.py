@@ -147,5 +147,5 @@ def verify_assurance_report(
     payload: VerifyReportRequest,
 ) -> ResponseEnvelope[VerifyReportResponse]:
     """Cryptographically audit an assurance report for tamper status and signature validity."""
-    result = default_report_engine.verify_report(payload.report)
+    result = default_report_engine.verify_report(payload.report, algorithm=payload.algorithm)
     return ResponseEnvelope(data=result)

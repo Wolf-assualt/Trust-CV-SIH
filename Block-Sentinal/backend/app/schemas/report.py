@@ -72,6 +72,7 @@ class GenerateReportRequest(BaseModel):
 class VerifyReportRequest(BaseModel):
     """Request payload to cryptographically audit an assurance report."""
     report: AssuranceReport
+    algorithm: str = "ed25519"
 
 
 class VerifyReportResponse(BaseModel):

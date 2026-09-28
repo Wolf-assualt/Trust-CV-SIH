@@ -687,10 +687,10 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
             const backendStatus = componentState.status.toUpperCase();
             const frontendStatus: any =
               backendStatus === 'PASSED' ? 'PASSED' :
-              backendStatus === 'FAILED' ? 'FAILED' :
-              backendStatus === 'UNAVAILABLE' ? 'UNAVAILABLE' :
-              backendStatus === 'RUNNING' ? 'RUNNING' :
-              'WAITING';
+                backendStatus === 'FAILED' ? 'FAILED' :
+                  backendStatus === 'UNAVAILABLE' ? 'UNAVAILABLE' :
+                    backendStatus === 'RUNNING' ? 'RUNNING' :
+                      'WAITING';
             return {
               ...s,
               status: frontendStatus,
@@ -849,10 +849,10 @@ export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({
               const backendStatus = componentState.status.toUpperCase();
               const frontendStatus: any =
                 backendStatus === 'PASSED' ? 'PASSED' :
-                backendStatus === 'FAILED' ? 'FAILED' :
-                backendStatus === 'UNAVAILABLE' ? 'UNAVAILABLE' :
-                backendStatus === 'RUNNING' ? 'PASSED' : // RUNNING at completion = PASSED
-                'UNAVAILABLE';
+                  backendStatus === 'FAILED' ? 'FAILED' :
+                    backendStatus === 'UNAVAILABLE' ? 'UNAVAILABLE' :
+                      backendStatus === 'RUNNING' ? 'PASSED' : // RUNNING at completion = PASSED
+                        'UNAVAILABLE';
               return {
                 ...s,
                 status: frontendStatus,

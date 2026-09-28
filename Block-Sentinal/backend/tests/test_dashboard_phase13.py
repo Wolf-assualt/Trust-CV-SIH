@@ -318,15 +318,34 @@ def test_18_report_listing():
 # 19. Report Verification
 # =============================================================================
 
-def test_19_report_verification():
+def test_19_report_verification(tmp_path: Path):
     """Verify that reports verification endpoint validates cryptographic integrity."""
-    reports_res = client.get("/api/v1/reports")
-    reports = reports_res.json()["data"]
-    if reports:
-        report = reports[0]
-        verify_res = client.post("/api/v1/reports/verify", json={"report": report})
-        assert verify_res.status_code == 200
-        assert verify_res.json()["data"]["is_valid"] is True
+    from app.schemas.fusion import EvidenceItem, EvidenceSource
+    from app.schemas.integrity import IntegritySeverity
+    from app.reports.engine import AssuranceReportEngine
+
+    evidence = [
+        EvidenceItem(
+            evidence_id="ev_dash_019",
+            source=EvidenceSource.DATA_INTEGRITY,
+            evidence_type="INTEGRITY_CHECK",
+            severity=IntegritySeverity.LOW,
+            subject_id="asset_dash_019",
+        )
+    ]
+    assessment = default_fusion_engine.fuse("asset_dash_019", evidence)
+    engine = AssuranceReportEngine(storage_dir=tmp_path / "reports")
+    report = engine.generate_report(
+        target_asset_id="asset_dash_019",
+        target_asset_type="DATASET",
+        assessment=assessment,
+    )
+    verify_res = client.post("/api/v1/reports/verify", json={"report": report.model_dump(mode="json")})
+    assert verify_res.status_code == 200
+    data = verify_res.json()["data"]
+    assert data["is_valid"] is True
+    assert data["digest_match"] is True
+    assert data["signature_valid"] is True
 
 
 # =============================================================================
