@@ -14,6 +14,34 @@ export interface ApiResponse<T> {
 
 // ── Backend schema types (subset needed by frontend) ─────────────────────────
 
+
+export interface StreamTriggerPatch {
+  box: [number, number, number, number];
+  size: [number, number];
+  patch_type: string;
+  mean_brightness: number;
+  contrast_std: number;
+}
+
+export interface StreamFrameResponse {
+  frame_index: number;
+  sha256_hash: string;
+  latency_ms: number;
+  trust_score: number;
+  verdict: 'REAL / CLEAN' | 'TRIGGER DETECTED / POISONED' | 'SUSPICIOUS' | 'NEAR-DUPLICATE';
+  trigger_detected: boolean;
+  near_duplicate: boolean;
+  trigger_patches: StreamTriggerPatch[];
+  evidence_summary: string;
+  timestamp: string;
+  dimensions: [number, number];
+}
+
+export interface StreamHistoryResponse {
+  total_frames_analyzed: number;
+  recent_frames: StreamFrameResponse[];
+}
+
 export interface SystemHealthOverview {
   total_datasets: number;
   total_models: number;
@@ -122,15 +150,27 @@ export interface DatasetIntegrityReport {
   timestamp: string;
 }
 
+export interface TriggerPatchLocation {
+  corner: string | null;
+  region: string | null;
+  coordinates: number[] | null;  // [x, y, w, h]
+  patch_size: number | null;
+  detection_method: string;
+  trigger_tag: string | null;
+}
+
 export interface ImageAssessment {
   sample_id: string;
   file_name: string;
   sha256_hash: string;
-  result: 'REAL / CLEAN' | 'POISONED / ALTERED' | 'SUSPICIOUS';
+  result: 'REAL / CLEAN' | 'POISONED / ALTERED' | 'SUSPICIOUS' | 'NEAR-DUPLICATE';
   integrity_status: 'PASS' | 'FAIL' | 'REVIEW REQUIRED';
   trust_status: 'VERIFIED' | 'UNTRUSTED' | 'REVOKED';
   anomaly_score: number | null;
-  evidence: string[];
+  evidence_summary: string;
+  evidence: string[];        // Top-3 deduplicated evidence lines
+  evidence_full: string[];   // All evidence lines
+  trigger_patches: TriggerPatchLocation[];
   action: string;
   preview_data_url: string | null;
   quarantined: boolean;
@@ -566,6 +606,65 @@ class ApiService {
       return envelope.data ?? null;
     } catch (e) {
       console.warn('[TRUST-CV Service] Report generation failed (air-gapped mode):', e);
+      return null;
+    }
+  }
+
+  // ── Real-Time Live Stream Pipeline ──────────────────────────────────────────
+
+  /**
+   * Send a base64 encoded video/camera frame to the real-time zero-trust analyzer.
+   */
+  async analyzeStreamFrame(
+    frameBase64: string,
+    frameIndex: number = 0,
+    source: string = 'webcam',
+  ): Promise<StreamFrameResponse | null> {
+    try {
+      const res = await fetch(`${this.baseUrl}/stream/analyze_frame`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          frame_base64: frameBase64,
+          frame_index: frameIndex,
+          source,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const envelope: ApiResponse<StreamFrameResponse> = await res.json();
+      return envelope.data ?? null;
+    } catch (e) {
+      console.warn('[TRUST-CV Service] Live stream analysis failed:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Reset the live stream buffer and history on backend.
+   */
+  async resetStream(): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.baseUrl}/stream/reset`, {
+        method: 'POST',
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('[TRUST-CV Service] Reset stream failed:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Fetch recent stream history frames.
+   */
+  async fetchStreamHistory(): Promise<StreamHistoryResponse | null> {
+    try {
+      const res = await fetch(`${this.baseUrl}/stream/recent`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const envelope: ApiResponse<StreamHistoryResponse> = await res.json();
+      return envelope.data ?? null;
+    } catch (e) {
+      console.warn('[TRUST-CV Service] Fetch stream history failed:', e);
       return null;
     }
   }

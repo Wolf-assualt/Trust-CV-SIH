@@ -33,7 +33,7 @@ export const LaunchPage: React.FC = () => {
               margin: 0,
             }}
           >
-            Investigation Artifact Setup
+            Real-Time Surveillance Stream & Forensic Ingestion
           </h2>
           <p
             style={{
@@ -42,7 +42,7 @@ export const LaunchPage: React.FC = () => {
               margin: '4px 0 0 0',
             }}
           >
-            Provide surveillance datasets, neural network weights, and inference outputs for validation.
+            Continuous live camera feed monitoring, zero-trust frame verification, and forensic artifact ingestion.
           </p>
         </div>
 

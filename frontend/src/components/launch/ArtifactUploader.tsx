@@ -22,6 +22,8 @@ import type { ArtifactType } from '../../types/investigation';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { ProvenanceChain } from './ProvenanceChain';
+import { LiveStreamMonitor } from './LiveStreamMonitor';
+import { Camera } from 'lucide-react';
 
 export const ArtifactUploader: React.FC = () => {
   const {
@@ -33,7 +35,7 @@ export const ArtifactUploader: React.FC = () => {
     isScanning,
   } = useInvestigation();
 
-  const [mode, setMode] = useState<'batch' | 'one-off'>('batch');
+  const [mode, setMode] = useState<'stream' | 'batch' | 'one-off'>('stream');
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const videoInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -127,6 +129,27 @@ export const ArtifactUploader: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             type="button"
+            onClick={() => setMode('stream')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: mode === 'stream' ? 600 : 500,
+              backgroundColor: mode === 'stream' ? 'var(--accent)' : 'transparent',
+              color: mode === 'stream' ? '#fff' : 'var(--text-secondary)',
+              border: `1px solid ${mode === 'stream' ? 'var(--accent)' : 'var(--border)'}`,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Camera size={14} strokeWidth={1.5} />
+            Live Camera / Real-Time Surveillance
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('batch')}
             style={{
               padding: '6px 14px',
@@ -170,7 +193,16 @@ export const ArtifactUploader: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {mode === 'batch' ? (
+          {mode === 'stream' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                Pipeline:
+              </span>
+              <Badge variant="accent" size="sm" icon={<Zap size={12} strokeWidth={1.5} />}>
+                Zero-Trust Real-Time Feed
+              </Badge>
+            </div>
+          ) : mode === 'batch' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
                 Ingestion:
@@ -217,8 +249,10 @@ export const ArtifactUploader: React.FC = () => {
         </div>
       </div>
 
-      {/* ONE-OFF MODE: Single Image/Video + Reference Baseline */}
-      {mode === 'one-off' ? (
+      {/* STREAM MODE vs ONE-OFF MODE vs BATCH MODE */}
+      {mode === 'stream' ? (
+        <LiveStreamMonitor />
+      ) : mode === 'one-off' ? (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

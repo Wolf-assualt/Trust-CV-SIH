@@ -30,6 +30,7 @@ from app.api.redteam import router as redteam_router
 from app.api.hardening import router as hardening_router
 from app.api.scan import router as scan_router
 from app.api.ledger import router as ledger_router
+from app.api.stream import router as stream_router
 from app.core.config import settings
 from app.core.logging import setup_logging
 
@@ -80,6 +81,7 @@ app.include_router(redteam_router, prefix="/api/v1")
 app.include_router(hardening_router, prefix="/api/v1")
 app.include_router(scan_router, prefix="/api/v1")
 app.include_router(ledger_router, prefix="/api/v1")
+app.include_router(stream_router, prefix="/api/v1")
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 INDEX_HTML_PATH = Path(__file__).resolve().parent / "templates" / "index.html"

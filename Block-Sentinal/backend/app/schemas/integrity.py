@@ -95,15 +95,28 @@ class IntegrityFinding(BaseModel):
     recommended_action: Optional[str] = None
 
 
+class TriggerPatchLocation(BaseModel):
+    """Describes a confirmed or candidate trigger patch location on a specific image."""
+    corner: Optional[str] = None          # e.g. "top-left", "bottom-right", or None for interior
+    region: Optional[str] = None          # e.g. "spatial_window_(0,0)" for sliding-window hits
+    coordinates: Optional[List[int]] = None  # [x, y, w, h] bounding box
+    patch_size: Optional[int] = None
+    detection_method: str = "corner_patch"  # "corner_patch" | "sliding_window" | "saliency"
+    trigger_tag: Optional[str] = None       # STATIC_PATCH | HEURISTIC_SALIENCY_ANOMALY
+
+
 class ImageAssessment(BaseModel):
     sample_id: str
     file_name: str
     sha256_hash: str
-    result: str
+    result: str  # REAL / CLEAN | POISONED / ALTERED | SUSPICIOUS | NEAR-DUPLICATE
     integrity_status: str
     trust_status: str
     anomaly_score: Optional[float] = None
-    evidence: List[str] = Field(default_factory=list)
+    evidence_summary: str = ""             # Short 1-line summary
+    evidence: List[str] = Field(default_factory=list)  # Top-3 deduplicated evidence lines
+    evidence_full: List[str] = Field(default_factory=list)  # All evidence lines (for expandable detail)
+    trigger_patches: List[TriggerPatchLocation] = Field(default_factory=list)  # Per-image trigger locations
     action: str
     preview_data_url: Optional[str] = None
     quarantined: bool = False

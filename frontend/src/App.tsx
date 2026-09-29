@@ -12,12 +12,12 @@ const MultiPhaseSocView: React.FC = () => {
   const { phase } = useInvestigation();
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col font-sans text-slate-200">
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
       <Header />
       <PhaseStepper />
 
-      <main className="flex-1 overflow-x-hidden overflow-y-auto w-full relative">
-        <div className="w-full max-w-[1600px] mx-auto min-h-full">
+      <main style={{ flex: 1, width: '100%', position: 'relative' }}>
+        <div style={{ width: '100%', maxWidth: '1680px', margin: '0 auto', minHeight: '100%', padding: '0 1.5rem 3rem' }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={phase}
