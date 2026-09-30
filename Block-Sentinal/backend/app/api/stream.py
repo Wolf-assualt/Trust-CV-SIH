@@ -26,8 +26,10 @@ class StreamTriggerPatch(BaseModel):
     size: Optional[List[int]] = None  # [h, w]
     patch_size: Optional[int] = None
     patch_type: Optional[str] = "30x30 White Square"
-    mean_brightness: float = 255.0
-    contrast_std: float = 0.0
+    # Measured from the flagged pixels by analyze_frame. Left unset rather than defaulting
+    # to a plausible-looking value, so an unmeasured patch can never report fake evidence.
+    mean_brightness: Optional[float] = None
+    contrast_std: Optional[float] = None
     description: str = ""
 
 
@@ -158,6 +160,25 @@ async def analyze_frame(req: StreamFrameRequest) -> ResponseEnvelope[StreamFrame
     if corner and coords:
         x, y, pw, ph = coords
         patch_box = [int(y), int(x), int(y + ph), int(x + pw)]
+
+        # Measure the reported statistics from the pixels that were actually flagged.
+        # These used to be hardcoded to 255.0 / 0.0, so a solid black corner patch was
+        # reported with mean_brightness 255.0 -- evidence that contradicted the frame.
+        _ph, _pw = arr_rgb.shape[0], arr_rgb.shape[1]
+        _x0, _y0 = max(0, x), max(0, y)
+        _x1, _y1 = min(_pw, x + pw), min(_ph, y + ph)
+        if _x1 > _x0 and _y1 > _y0:
+            _patch = arr_rgb[_y0:_y1, _x0:_x1]
+            _gray = (
+                0.299 * _patch[..., 0] + 0.587 * _patch[..., 1] + 0.114 * _patch[..., 2]
+            )
+            patch_brightness = round(float(_gray.mean()), 2)
+            patch_contrast = round(float(_gray.std()), 4)
+        else:  # degenerate box; fall back to the whole frame rather than invent a value
+            _gray = 0.299 * arr_rgb[..., 0] + 0.587 * arr_rgb[..., 1] + 0.114 * arr_rgb[..., 2]
+            patch_brightness = round(float(_gray.mean()), 2)
+            patch_contrast = round(float(_gray.std()), 4)
+
         trigger_patches.append(
             StreamTriggerPatch(
                 corner=corner,
@@ -167,9 +188,9 @@ async def analyze_frame(req: StreamFrameRequest) -> ResponseEnvelope[StreamFrame
                 size=[int(ph), int(pw)],
                 patch_size=patch_sz,
                 patch_type=f"{patch_sz}x{patch_sz} Trigger Square",
-                mean_brightness=255.0,
-                contrast_std=0.0,
-                description=f"Confirmed trigger patch at {corner} [{coords[0]}, {coords[1]}, {coords[2]}, {coords[3]}] ({patch_sz}×{patch_sz})",
+                mean_brightness=patch_brightness,
+                contrast_std=patch_contrast,
+                description=f"Confirmed trigger patch at {corner} [{coords[0]}, {coords[1]}, {coords[2]}, {coords[3]}] ({patch_sz}×{patch_sz}), mean brightness {patch_brightness}",
             )
         )
         evidence.append(f"Trigger backdoor confirmed at {corner} with bounding box {coords}.")
