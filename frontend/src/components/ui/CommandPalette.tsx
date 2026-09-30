@@ -221,7 +221,7 @@ export const CommandPalette: React.FC = () => {
                     {filtered.length} result{filtered.length === 1 ? '' : 's'}
                   </span>
                 )}
-                <span className="keychip">ESC</span>
+                <span className="ctl-kbd">ESC</span>
               </div>
 
               {/* Command list */}
@@ -259,16 +259,16 @@ export const CommandPalette: React.FC = () => {
               {/* Footer hints */}
               <div className="cp-footer">
                 <span className="cp-footer__hint">
-                  <kbd className="keychip">↑</kbd>
-                  <kbd className="keychip">↓</kbd>
+                  <kbd className="ctl-kbd">↑</kbd>
+                  <kbd className="ctl-kbd">↓</kbd>
                   navigate
                 </span>
                 <span className="cp-footer__hint">
-                  <kbd className="keychip">↵</kbd>
+                  <kbd className="ctl-kbd">↵</kbd>
                   run
                 </span>
                 <span className="cp-footer__hint">
-                  <kbd className="keychip">esc</kbd>
+                  <kbd className="ctl-kbd">esc</kbd>
                   close
                 </span>
               </div>

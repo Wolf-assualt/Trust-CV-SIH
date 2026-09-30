@@ -1,210 +1,132 @@
 /* ==========================================================================
-   TRUST-CV Design Tokens
-   --------------------------------------------------------------------------
-   Single source of truth for the visual language.
-
-   Palette: warm paper + deep forest green. Hairline 1px borders do all the
-   separating work — shadows, glows and gradients are deliberately absent.
-
-   Light is the default theme. Dark is the *same* token set remapped onto a
-   charcoal-green ramp, so every component is written once.
-
-   Console surfaces (terminal / log / live-feed) stay dark in BOTH themes —
-   they are inset panels, not part of the page.
+   TRUST-CV Design Tokens — restrained dark theme
+   One accent (blue) reserved for primary actions, active nav, focus rings.
+   Status colors are functional and desaturated; used on dots/labels only.
    ========================================================================== */
 
-/* ── Type stacks — local fonts only, no network requests ──────────────────── */
-:root {
-  --font-serif: 'Newsreader', 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Inter', 'Hanken Grotesk', system-ui, -apple-system,
-    'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace,
-    SFMono-Regular, Menlo, Consolas, monospace;
-
-  /* Strict spacing scale — nothing outside this ramp. */
-  --s-1: 4px;
-  --s-2: 8px;
-  --s-3: 12px;
-  --s-4: 16px;
-  --s-6: 24px;
-  --s-8: 32px;
-
-  /* Shape */
-  --r-card: 12px;
-  --r-btn: 9px;
-  --r-input: 9px;
-  --r-pill: 999px;
-
-  /* Motion — short and non-bouncy. */
-  --ease: 140ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ==========================================================================
-   LIGHT (default)
-   ========================================================================== */
 :root,
-[data-theme='light'] {
-  color-scheme: light;
+[data-theme="dark"] {
+  /* Surface & Background */
+  --bg-primary: #0B0C0F;
+  --bg-secondary: #0F1014;
+  --bg-tertiary: #14161B;
+  --surface: #14161B;
+  --surface-elevated: #1A1D24;
+  --surface-hover: #1E2129;
+  --surface-active: #242830;
 
-  /* Surfaces — warm paper, not grey */
-  --bg-primary: #F3F1EA; /* page */
-  --bg-secondary: #EEEBE2; /* sidebar */
-  --bg-tertiary: #E7E3D7;
-  --surface: #FFFFFF; /* cards */
-  --surface-elevated: #FBFAF6; /* insets, table heads */
-  --surface-hover: #F1EFE6;
-  --surface-active: #E9E5D8;
-  --sidebar-bg: #EEEBE2;
-
-  /* Text. Muted tones are pitched dark enough to clear 4.5:1 against the
-     sidebar (#EEEBE2) as well as against white cards — the sidebar is darker
-     than the page, so the page-tuned value is not automatically safe there. */
-  --text-primary: #1E2A24;
-  --text-secondary: #4C564E;
-  --text-tertiary: #5F665C;
-  --text-muted: #61675E;
+  /* Typography */
+  --text-primary: #E6E8EB;
+  --text-secondary: #8B909A;
+  --text-tertiary: #6B7079;
+  --text-muted: #5A5F6B;
   --text-inverse: #FFFFFF;
 
-  /* Hairlines */
-  --border: #E4E0D4;
-  --border-subtle: #EDEAE0;
-  --border-strong: #D3CDBB;
+  /* Borders & Dividers */
+  --border: #262932;
+  --border-subtle: #202329;
+  --border-strong: #333741;
 
-  /* Brand — deep green for filled actions */
-  --accent: #0F3D2E;
-  --accent-hover: #0B3024;
-  --accent-surface: #E8F0EA; /* tint */
-  --accent-border: #C2D6C8;
-  --accent-text: #2C7360; /* green text on paper and on tint */
+  /* Single accent — primary CTA, active nav, focus rings only */
+  --accent: #3B82F6;
+  --accent-hover: #2F6FE0;
+  --accent-surface: rgba(59, 130, 246, 0.1);
+  --accent-border: rgba(59, 130, 246, 0.4);
+  --accent-text: #60A5FA;
 
-  /* Status. The base value is the dot/border colour; the *-text variant is
-     darkened just enough to stay legible as small type on its own tint. */
-  --success: #3E8E6B;
-  --success-surface: #E8F0EA;
-  --success-border: #C2D6C8;
-  --success-text: #2C7360;
+  /* Status tokens — desaturated, tiny elements only */
+  --success: #10B981;
+  --success-surface: rgba(16, 185, 129, 0.1);
+  --success-border: rgba(16, 185, 129, 0.35);
+  --success-text: #34D399;
 
-  --warning: #B7791F;
-  --warning-surface: #F6EFD9;
-  --warning-border: #E3D3A9;
-  --warning-text: #8A5A12;
+  --warning: #F59E0B;
+  --warning-surface: rgba(245, 158, 11, 0.1);
+  --warning-border: rgba(245, 158, 11, 0.35);
+  --warning-text: #F5B23F;
 
-  --danger: #B94A3E;
-  --danger-surface: #F8E6E2;
-  --danger-border: #EBC6BF;
-  --danger-text: #9E3A2F;
+  --danger: #EF4444;
+  --danger-surface: rgba(239, 68, 68, 0.1);
+  --danger-border: rgba(239, 68, 68, 0.35);
+  --danger-text: #F87171;
 
-  --critical: #B94A3E;
-  --critical-surface: #F8E6E2;
-  --critical-border: #EBC6BF;
-  --critical-text: #9E3A2F;
+  --critical: #EF4444;
+  --critical-surface: rgba(239, 68, 68, 0.12);
+  --critical-border: rgba(239, 68, 68, 0.4);
+  --critical-text: #F87171;
 
-  /* "Info" is green here — the palette carries no blue. */
-  --info: #2F7A66;
-  --info-surface: #E8F0EA;
-  --info-border: #C2D6C8;
-  --info-text: #2C7360;
+  --info: #3B82F6;
+  --info-surface: rgba(59, 130, 246, 0.1);
+  --info-border: rgba(59, 130, 246, 0.35);
+  --info-text: #60A5FA;
 
-  /* Verdict semantics — used by badges, graph nodes and banners alike */
-  --verdict-verified: #3E8E6B;
-  --verdict-suspicious: #B7791F;
-  --verdict-tampered: #B94A3E;
-  --verdict-pending: #6B7268;
-
-  /* Hairlines, not shadows */
-  --card-shadow: none;
-  --card-shadow-hover: none;
-
-  /* Inset console — always dark, in BOTH themes. A console is an object on
-     the page, not part of it, so it carries its own border, raised rows and
-     green tints rather than borrowing the light page's. */
-  --terminal-bg: #131C17;
-  --terminal-border: #2A3830;
-  --terminal-text: #C7D6CB;
-  --terminal-muted: #84968A;
-  --terminal-surface: #1A2620;
-  --terminal-surface-active: #22322A;
-  --terminal-accent-surface: #1B3028;
-  --terminal-accent-border: #2F5A48;
-  --terminal-accent-text: #7FC7A9;
-
-  --focus-ring: #2F7A66;
+  /* Elevation — subtle neutral shadows only, no colored glows */
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --terminal-bg: #0B0C0F;
+  --terminal-border: #262932;
+  --terminal-text: #D6D9DE;
 }
 
-/* ==========================================================================
-   DARK — the same tokens, remapped to charcoal-green
-   ========================================================================== */
-[data-theme='dark'] {
-  color-scheme: dark;
+[data-theme="light"] {
+  /* Surface & Background */
+  --bg-primary: #f4f5f7;
+  --bg-secondary: #eceef1;
+  --bg-tertiary: #e3e6ea;
+  --surface: #ffffff;
+  --surface-elevated: #f8f9fa;
+  --surface-hover: #eff1f4;
+  --surface-active: #e4e7eb;
 
-  --bg-primary: #151B17;
-  --bg-secondary: #1B221D; /* sidebar */
-  --bg-tertiary: #232B25;
-  --surface: #1B221D;
-  --surface-elevated: #222A24;
-  --surface-hover: #262F28;
-  --surface-active: #2C362E;
-  --sidebar-bg: #1B221D;
+  /* Typography */
+  --text-primary: #17181B;
+  --text-secondary: #4A4F58;
+  --text-tertiary: #6B7079;
+  --text-muted: #8A8F99;
+  --text-inverse: #ffffff;
 
-  --text-primary: #E7EBE6;
-  --text-secondary: #B4BEB6;
-  --text-tertiary: #8D978E;
-  --text-muted: #8D978E;
-  --text-inverse: #FFFFFF;
+  /* Borders & Dividers */
+  --border: #d9dce1;
+  --border-subtle: #e6e8ec;
+  --border-strong: #c2c6cd;
 
-  --border: #2B342D;
-  --border-subtle: #232B25;
-  --border-strong: #3B463D;
+  /* Single accent */
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --accent-surface: rgba(37, 99, 235, 0.08);
+  --accent-border: rgba(37, 99, 235, 0.35);
+  --accent-text: #1D4ED8;
 
-  /* Hover darkens in both themes so white label text keeps its contrast. */
-  --accent: #2F7A66;
-  --accent-hover: #2A6E5C;
-  --accent-surface: #1D2C25;
-  --accent-border: #2E4A3E;
-  --accent-text: #6FB39C;
+  /* Status tokens (light mode) */
+  --success: #059669;
+  --success-surface: rgba(5, 150, 105, 0.08);
+  --success-border: rgba(5, 150, 105, 0.3);
+  --success-text: #047857;
 
-  --success: #4E9E7B;
-  --success-surface: #1C2A22;
-  --success-border: #2F4739;
-  --success-text: #6FBF9C;
+  --warning: #D97706;
+  --warning-surface: rgba(217, 119, 6, 0.08);
+  --warning-border: rgba(217, 119, 6, 0.3);
+  --warning-text: #B45309;
 
-  --warning: #C8933A;
-  --warning-surface: #2B2416;
-  --warning-border: #47391D;
-  --warning-text: #DCAE5B;
+  --danger: #DC2626;
+  --danger-surface: rgba(220, 38, 38, 0.08);
+  --danger-border: rgba(220, 38, 38, 0.3);
+  --danger-text: #B91C1C;
 
-  --danger: #C95547;
-  --danger-surface: #2C1D1A;
-  --danger-border: #4B2C26;
-  --danger-text: #E08D7F;
+  --critical: #DC2626;
+  --critical-surface: rgba(220, 38, 38, 0.08);
+  --critical-border: rgba(220, 38, 38, 0.35);
+  --critical-text: #B91C1C;
 
-  --critical: #C95547;
-  --critical-surface: #2C1D1A;
-  --critical-border: #4B2C26;
-  --critical-text: #E08D7F;
+  --info: #2563EB;
+  --info-surface: rgba(37, 99, 235, 0.08);
+  --info-border: rgba(37, 99, 235, 0.3);
+  --info-text: #1D4ED8;
 
-  --info: #6FB39C;
-  --info-surface: #1D2C25;
-  --info-border: #2E4A3E;
-  --info-text: #6FB39C;
-
-  --verdict-verified: #4E9E7B;
-  --verdict-suspicious: #C8933A;
-  --verdict-tampered: #C95547;
-  --verdict-pending: #8D978E;
-
-  --card-shadow: none;
-  --card-shadow-hover: none;
-
-  --terminal-bg: #0E1411;
-  --terminal-border: #263029;
-  --terminal-text: #C2D2C7;
-  --terminal-muted: #7C8C81;
-  --terminal-surface: #151E18;
-  --terminal-surface-active: #1D2A22;
-  --terminal-accent-surface: #16281F;
-  --terminal-accent-border: #2A4A3C;
-  --terminal-accent-text: #6FBF9C;
-
-  --focus-ring: #6FB39C;
+  /* Elevation */
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --terminal-bg: #17181B;
+  --terminal-border: #d9dce1;
+  --terminal-text: #e6e8eb;
 }

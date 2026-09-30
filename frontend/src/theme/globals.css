@@ -14,7 +14,7 @@ html, body {
   min-height: 100vh;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-sans);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -23,39 +23,17 @@ html, body {
   overflow-x: hidden;
 }
 
-/* Monospace is reserved for hashes, IDs, eyebrow labels and latency numbers. */
+/* Monospace is reserved for hashes, IDs, and latency numbers. */
 .font-mono {
-  font-family: var(--font-mono);
+  font-family: 'JetBrains Mono', monospace;
   font-feature-settings: 'zero' on;
 }
 
-/* Tiny uppercase mono label — eyebrows, breadcrumbs, IDs, timestamps. */
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-/* Metrics and counts align on the decimal point. */
-.tabular {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
-}
-
-/* Page + card headings are serif; big titles accent their last word. */
+/* Section headers render in normal case, slightly tightened. */
 .font-display {
-  font-family: var(--font-serif);
-  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--text-primary);
-}
-
-.accent-word {
-  color: var(--accent-text);
 }
 
 ::selection {

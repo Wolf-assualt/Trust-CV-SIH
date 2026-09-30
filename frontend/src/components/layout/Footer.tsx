@@ -1,28 +1,48 @@
 import React from 'react';
 import { Lock, Cpu, Check } from 'lucide-react';
 
-/**
- * Footer — three quiet columns of tiny uppercase mono metadata. No fill
- * beyond the page background: a hairline on top is the only separator.
- */
 export const Footer: React.FC = () => {
   return (
-    <footer className="footer">
-      <div className="footer__col">
-        <Lock size={12} strokeWidth={1.5} aria-hidden="true" />
-        <span>Unclassified — defense assurance use only</span>
+    <footer
+      style={{
+        backgroundColor: 'var(--bg-primary)',
+        borderTop: '1px solid var(--border)',
+        padding: '0.75rem 2rem',
+        marginTop: 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Lock size={13} strokeWidth={1.5} style={{ color: 'var(--text-muted)' }} />
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Unclassified — defense assurance use only
+          </span>
+        </div>
+        <span style={{ color: 'var(--border-strong)', fontSize: '12px' }}>·</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Check size={13} strokeWidth={1.5} style={{ color: 'var(--success-text)' }} />
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Hash continuity: continuous Merkle seal
+          </span>
+        </div>
       </div>
 
-      <div className="footer__col">
-        <Check size={12} strokeWidth={1.5} aria-hidden="true" />
-        <span>Hash continuity: continuous Merkle seal</span>
-      </div>
-
-      <div className="footer__col footer__col--end">
-        <Cpu size={12} strokeWidth={1.5} aria-hidden="true" />
-        <span>Hardware SHA-256 acceleration active</span>
-        <span className="footer__rule" aria-hidden="true" />
-        <span>TRUST-CV v2.4 (offline SOC defense)</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Cpu size={13} strokeWidth={1.5} style={{ color: 'var(--text-muted)' }} />
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Hardware SHA-256 acceleration active
+          </span>
+        </div>
+        <span style={{ color: 'var(--border-strong)', fontSize: '12px' }}>·</span>
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          TRUST-CV v2.4 (offline SOC defense)
+        </span>
       </div>
     </footer>
   );

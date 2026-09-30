@@ -153,12 +153,12 @@ export const ValidationChecklist: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#fff',
+                color: '#0B0C0F',
                 flexShrink: 0,
               }}
             >
               {item.checked ? (
-                <Check size={12} strokeWidth={1.5} />
+                <Check size={12} strokeWidth={2} />
               ) : (
                 <span
                   style={{

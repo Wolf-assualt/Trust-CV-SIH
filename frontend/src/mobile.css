@@ -1,8 +1,8 @@
 /* ==========================================================================
    Mobile overrides — MOBILE ONLY.
-   Every rule lives inside a max-width media query, so the desktop (>768px)
-   render is unaffected. `!important` is used only where an inline style
-   object would otherwise win over the media query.
+   Every rule in this file lives inside a max-width media query, so the
+   desktop (>768px) render is byte-for-byte unchanged. `!important` is used
+   only where an inline style object would otherwise win over the media query.
    ========================================================================== */
 
 @media (max-width: 768px) {
@@ -40,79 +40,69 @@
     flex-wrap: wrap;
   }
 
-  /* ── 5. Shell: keep the top bar on a single row ─────────────────────────
-     The top bar carries four controls (burger, breadcrumb, status, search,
-     theme). Letting it wrap would push the sticky drawer offset out of sync,
-     so the breadcrumb is the only thing allowed to give up width.          */
-  .topbar {
-    flex-wrap: nowrap;
-    padding: 0 var(--s-4);
-    gap: var(--s-2);
+  /* ── 5. Header: brand + controls on row 1, phase nav on row 2 ───────────── */
+  header {
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 0.625rem 1rem !important;
   }
 
-  .topbar__left {
+  /* Brand block — drop the long subtitle and the session id to save width */
+  header > div:first-child {
     flex: 1 1 auto;
     min-width: 0;
   }
+  header > div:first-child p {
+    display: none;
+  }
+  header > div:first-child div > div {
+    flex-wrap: wrap;
+  }
+  header > div:first-child div > div > span[class="font-mono"] {
+    display: none;
+  }
 
-  .topbar__right {
+  /* Phase navigation becomes a full-width, scrollable segmented control */
+  header > div:nth-child(2) {
+    order: 3;
+    flex: 1 1 100%;
+    width: 100%;
+    overflow-x: auto;
+  }
+  header > div:nth-child(2) button {
+    flex: 1 1 auto;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  /* Right-hand controls stay compact */
+  header > div:nth-child(3) {
     flex: 0 0 auto;
     margin-left: auto;
   }
 
-  /* The breadcrumb loses its "TRUST-CV" root once space is tight; the current
-     page name is the part that carries orientation. */
-  .breadcrumb__root {
+  /* Icon-only the command-palette + theme buttons (no room for labels) */
+  header button[aria-label="Open command palette"] .ctl-pill__label,
+  header button[aria-label="Open command palette"] .ctl-kbd,
+  header button[aria-label="Toggle Light and Dark Theme"] .ctl-pill__label {
     display: none;
   }
 
-  .breadcrumb__sep {
-    display: none;
-  }
-
-  /* Search collapses to its icon — the keycap keeps the shortcut discoverable
-     until the bar is genuinely narrow. */
-  .search-btn__label {
-    display: none;
-  }
-
-  /* ── 6. Page gutters (4/8/12/16/24/32 scale) ───────────────────────────── */
-  .shell__content {
-    padding: var(--s-4) var(--s-4) var(--s-8);
-  }
-
-  /* Footer columns collapse into a single tight stack. */
-  .footer {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--s-1);
-    padding: var(--s-3) var(--s-4);
-  }
-
-  .footer__col--end {
-    justify-content: flex-start;
-  }
-
-  .content-wrapper {
-    padding: var(--s-4);
-  }
-
+  /* ── 6. Page gutters ───────────────────────────────────────────────────── */
   main > div {
-    padding-left: var(--s-4) !important;
-    padding-right: var(--s-4) !important;
-    padding-bottom: var(--s-8) !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-bottom: 2rem !important;
   }
-
-  /* The off-canvas drawer is intentionally parked outside the viewport; it
-     must never be able to create a horizontal scrollbar. */
-  .sidebar {
-    max-width: 100%;
+  .content-wrapper {
+    padding: 1rem !important;
   }
 
   /* ── 7. Tables scroll inside their own wrapper (no page-level h-scroll) ─── */
   table {
     min-width: 660px;
   }
-
   [style*="overflow-x: auto"] {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
@@ -142,8 +132,7 @@
 
   /* ── 10. Long identifiers / hashes wrap instead of scrolling ───────────── */
   [style*="overflow-wrap: anywhere"],
-  [class*="font-mono"],
-  .case-card__id {
+  [class*="font-mono"] {
     overflow-wrap: anywhere;
   }
 
@@ -154,31 +143,30 @@
 }
 
 @media (max-width: 480px) {
-  /* Tighter gutters on small phones — still on the 4px scale. */
-  .shell__content {
-    padding: var(--s-3) var(--s-3) var(--s-6);
-  }
-
-  .footer {
-    padding: var(--s-3);
-  }
-
+  /* Tighter gutters and stacked section rhythm on small phones */
   main > div {
-    padding-left: var(--s-3) !important;
-    padding-right: var(--s-3) !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
   }
 
-  /* The keycap is redundant next to the icon once the row is this narrow. */
-  .keychip {
+  /* Phase stepper: drop the "01 / 02 / 03" mono prefixes to save width */
+  header > div:nth-child(2) button span[class="font-mono"] {
     display: none;
   }
 
-  .search-btn {
-    padding: 0 var(--s-2);
+  /* Brand + right-hand controls need ~395px to share one row, but a 360–400px
+     phone only offers ~330–370px. Drop the decorative "SOC" chip and tighten
+     the control cluster so the header stays two rows instead of three. */
+  header > div:first-child div > div > span:nth-of-type(2) {
+    display: none;
   }
-
-  .topbar__right {
-    gap: var(--s-2);
+  header > div:nth-child(3) {
+    gap: 8px !important;
+  }
+  header button[aria-label="Open command palette"],
+  header button[aria-label="Toggle Light and Dark Theme"] {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
   }
 
   /* Touch targets get the full 48px comfortable size */

@@ -126,28 +126,70 @@ export const ArtifactUploader: React.FC = () => {
         }}
       >
         {/* Tab Switcher */}
-        <div className="segmented" style={{ flexWrap: 'wrap' }}>
-          {([
-            { id: 'stream', label: 'Live Camera / Real-Time Surveillance', Icon: Camera },
-            { id: 'batch', label: 'Batch / Multi-Artifact', Icon: Layers },
-            { id: 'one-off', label: 'One-Off Single-File + Baseline', Icon: Video },
-          ] as const).map(({ id, label, Icon }) => {
-            const isActive = mode === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setMode(id)}
-                className={`segmented__tab segmented__tab--inline${
-                  isActive ? ' segmented__tab--active' : ''
-                }`}
-                aria-current={isActive ? 'true' : undefined}
-              >
-                <Icon size={14} strokeWidth={1.5} />
-                <span className="segmented__label">{label}</span>
-              </button>
-            );
-          })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => setMode('stream')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: mode === 'stream' ? 600 : 500,
+              backgroundColor: mode === 'stream' ? 'var(--accent)' : 'transparent',
+              color: mode === 'stream' ? '#fff' : 'var(--text-secondary)',
+              border: `1px solid ${mode === 'stream' ? 'var(--accent)' : 'var(--border)'}`,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Camera size={14} strokeWidth={1.5} />
+            Live Camera / Real-Time Surveillance
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('batch')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: mode === 'batch' ? 600 : 500,
+              backgroundColor: mode === 'batch' ? 'var(--accent)' : 'transparent',
+              color: mode === 'batch' ? '#fff' : 'var(--text-secondary)',
+              border: `1px solid ${mode === 'batch' ? 'var(--accent)' : 'var(--border)'}`,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Layers size={14} strokeWidth={1.5} />
+            Batch / Multi-Artifact
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('one-off')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              fontSize: '0.8125rem',
+              fontWeight: mode === 'one-off' ? 600 : 500,
+              backgroundColor: mode === 'one-off' ? 'var(--accent)' : 'transparent',
+              color: mode === 'one-off' ? '#fff' : 'var(--text-secondary)',
+              border: `1px solid ${mode === 'one-off' ? 'var(--accent)' : 'var(--border)'}`,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Video size={14} strokeWidth={1.5} />
+            One-Off Single-File + Baseline
+          </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

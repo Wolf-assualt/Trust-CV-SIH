@@ -133,8 +133,7 @@ export interface InvestigationContextType {
 export const InvestigationContext = createContext<InvestigationContextType | null>(null);
 
 export const InvestigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Visual default is light; dark is the same token set remapped.
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>('dark');
   const [backendOnline, setBackendOnline] = useState(false);
   const [backendOverview, setBackendOverview] = useState<SystemHealthOverview | null>(null);
   const [fusedAssessmentId] = useState<string | null>(null);
