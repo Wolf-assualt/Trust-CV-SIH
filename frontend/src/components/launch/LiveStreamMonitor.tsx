@@ -830,7 +830,7 @@ export const LiveStreamMonitor: React.FC = () => {
                   style={{
                     fontSize: '18px',
                     fontWeight: 700,
-                    color: isTriggerActive ? '#ef4444' : '#22c55e',
+                    color: isTriggerActive ? 'var(--critical-text)' : 'var(--success-text)',
                     letterSpacing: '-0.01em',
                   }}
                 >
@@ -874,7 +874,7 @@ export const LiveStreamMonitor: React.FC = () => {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Avg Latency</span>
-                <span style={{ fontSize: '16px', fontWeight: 600, color: '#38bdf8' }}>
+                <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--info-text)' }}>
                   {avgLatency} ms
                 </span>
               </div>
@@ -1039,7 +1039,7 @@ export const LiveStreamMonitor: React.FC = () => {
                         }}
                       >
                         <span>Frame #{frame.frame_index}</span>
-                        <span style={{ color: '#38bdf8' }}>{frame.latency_ms.toFixed(2)} ms</span>
+                        <span style={{ color: 'var(--info-text)' }}>{frame.latency_ms.toFixed(2)} ms</span>
                       </div>
 
                       <div

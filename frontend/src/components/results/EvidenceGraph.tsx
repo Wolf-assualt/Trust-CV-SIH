@@ -1467,7 +1467,7 @@ const EvidenceGraphInner: React.FC = () => {
                 transform: 'translateX(-50%)',
                 backgroundColor: 'rgba(15, 23, 42, 0.95)',
                 border: '1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))',
-                color: 'var(--text-muted, #94a3b8)',
+                color: 'var(--terminal-muted)',
                 fontSize: '11px',
                 padding: '4px 12px',
                 borderRadius: '20px',
@@ -1582,7 +1582,7 @@ const EvidenceGraphInner: React.FC = () => {
                       x={st.x}
                       y={22}
                       textAnchor="middle"
-                      fill="var(--text-muted)"
+                      fill="var(--terminal-muted)"
                       fontSize="9"
                       fontFamily="'JetBrains Mono', monospace"
                       fontWeight="700"
@@ -1741,7 +1741,7 @@ const EvidenceGraphInner: React.FC = () => {
                       {/* Short label under node (max 10 chars + ellipsis) */}
                       <text
                         y={r + 14}
-                        fill="var(--text-primary)"
+                        fill="var(--terminal-text)"
                         fontSize="11"
                         fontFamily="Inter, sans-serif"
                         fontWeight="500"

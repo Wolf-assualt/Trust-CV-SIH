@@ -105,7 +105,7 @@ export const Header: React.FC = () => {
       >
         {navItems.map((item, i) => (
           <React.Fragment key={item.id}>
-            {i > 0 && <span style={{ color: 'var(--border-strong)', fontSize: '12px' }}>/</span>}
+            {i > 0 && <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>/</span>}
             <button
               onClick={() => setPhase(item.id)}
               style={{

@@ -147,7 +147,7 @@ export const TerminalLog: React.FC = () => {
         }}
       >
         {filteredLogs.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', padding: '16px 0' }}>
+          <div style={{ color: 'var(--terminal-muted)', padding: '16px 0' }}>
             Awaiting kernel initialization events...
           </div>
         ) : (
@@ -161,7 +161,7 @@ export const TerminalLog: React.FC = () => {
                 marginBottom: '4px',
               }}
             >
-              <span style={{ color: 'var(--text-muted)', userSelect: 'none', minWidth: '65px' }}>
+              <span style={{ color: 'var(--terminal-muted)', userSelect: 'none', minWidth: '65px' }}>
                 [{log.timestamp.includes('T') ? log.timestamp.split('T')[1].slice(0, 8) : log.timestamp}]
               </span>
               {getLevelBadge(log.level)}

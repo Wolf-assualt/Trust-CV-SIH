@@ -23,7 +23,7 @@ export const Footer: React.FC = () => {
             Unclassified — defense assurance use only
           </span>
         </div>
-        <span style={{ color: 'var(--border-strong)', fontSize: '12px' }}>·</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>·</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Check size={13} strokeWidth={1.5} style={{ color: 'var(--success-text)' }} />
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -39,7 +39,7 @@ export const Footer: React.FC = () => {
             Hardware SHA-256 acceleration active
           </span>
         </div>
-        <span style={{ color: 'var(--border-strong)', fontSize: '12px' }}>·</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>·</span>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
           TRUST-CV v2.4 (offline SOC defense)
         </span>

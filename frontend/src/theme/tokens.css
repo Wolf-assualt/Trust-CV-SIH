@@ -17,9 +17,9 @@
 
   /* Typography */
   --text-primary: #E6E8EB;
-  --text-secondary: #8B909A;
-  --text-tertiary: #6B7079;
-  --text-muted: #5A5F6B;
+  --text-secondary: #A3A8B2;
+  --text-tertiary: #8B909A;
+  --text-muted: #8B909A;
   --text-inverse: #FFFFFF;
 
   /* Borders & Dividers */
@@ -66,6 +66,7 @@
   --terminal-bg: #0B0C0F;
   --terminal-border: #262932;
   --terminal-text: #D6D9DE;
+  --terminal-muted: #8B909A;
 }
 
 [data-theme="light"] {
@@ -78,17 +79,18 @@
   --surface-hover: #eff1f4;
   --surface-active: #e4e7eb;
 
-  /* Typography */
+  /* Typography — greys step down in even luminance so every step clears
+     4.5:1 on --bg-primary (#f4f5f7) and on white surfaces. */
   --text-primary: #17181B;
-  --text-secondary: #4A4F58;
-  --text-tertiary: #6B7079;
-  --text-muted: #8A8F99;
+  --text-secondary: #3F444D;
+  --text-tertiary: #565B64;
+  --text-muted: #656A73;
   --text-inverse: #ffffff;
 
   /* Borders & Dividers */
   --border: #d9dce1;
   --border-subtle: #e6e8ec;
-  --border-strong: #c2c6cd;
+  --border-strong: #b4b9c2;
 
   /* Single accent */
   --accent: #2563EB;
@@ -126,7 +128,10 @@
   /* Elevation */
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  /* The console stays dark in both themes, so its dim ink is theme-independent —
+     borrowing --text-muted here would invert to near-invisible on light. */
   --terminal-bg: #17181B;
   --terminal-border: #d9dce1;
   --terminal-text: #e6e8eb;
+  --terminal-muted: #8B909A;
 }
