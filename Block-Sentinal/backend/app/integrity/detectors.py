@@ -535,127 +535,186 @@ class OODDetector:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class ProxyOcclusionSaliencyAnalyzer:
-    """Lightweight proxy-model occlusion sensitivity scanner to detect localized regions
-    with abnormally high influence on prediction relative to the rest of the image.
+    """Model-grounded occlusion sensitivity scanner for localized trigger candidates.
 
-    Serves as an additional heuristic proxy signal for optimized, imperceptible, or non-static triggers.
+    Measures how far a real model's output moves when one spatial cell is occluded,
+    and subtracts an equal-area perturbation placed elsewhere in the same image as a
+    control. The difference isolates *localized* influence from the model's general
+    sensitivity to any perturbation of the same size.
+
+    Requires a real probe model. If none is supplied the result is UNAVAILABLE and
+    this returns None. It deliberately does NOT fall back to a randomly-initialised
+    network: the occlusion response of an untrained convnet is a property of its
+    random initialisation, not of the model under test, so scoring against it would
+    manufacture findings that mean nothing.
+
+    Scope limit, stated because it is easy to overread, and MEASURED rather than assumed:
+    occlusion sensitivity on one model does not establish that a dataset is poisoned,
+    and for small static patches on a real object detector it does not even localize
+    reliably. Calibrating this against YOLOv8n at 640x640 with a 40x40 trigger patch
+    (0.4% of pixels) on a 2x2 grid gave clean z-scores of 0.00-1.06 and poisoned
+    z-scores of 0.00-0.00, i.e. not separable. The trigger cell does win the argmax
+    on raw output, but the margin sits below the between-cell noise, and the matched
+    control subtraction removes most of what remains. Resolving a patch that small
+    would need a grid fine enough to make each cell comparable in area to the patch,
+    which costs hundreds of forward passes per image.
+
+    This is therefore OFF by default and stays UNAVAILABLE unless a caller supplies
+    probe_adapter explicitly. Cross-sample patch repetition, measured by
+    TriggerCandidateDetector's corner and sliding-window scanners, is the
+    load-bearing evidence for dataset poisoning and does not require a model at all.
+    Treat this as a research probe for a human, not a detector.
     """
-    _proxy_net = None
+
+    ANALYSIS_VERSION = "3.0.0"
+
+    @staticmethod
+    def _score(output: Any) -> float:
+        """Reduce a model output tensor to a single comparable scalar."""
+        arr = np.asarray(output, dtype=np.float64)
+        if arr.size == 0:
+            return 0.0
+        return float(np.max(arr))
 
     @classmethod
-    def get_proxy_net(cls):
-        if cls._proxy_net is None:
-            try:
-                import torch
-                import torch.nn as nn
+    def _run(cls, adapter: Any, image: Image.Image, input_spec: Any) -> Optional[float]:
+        """Preprocess one PIL image to the model contract and return the output score."""
+        from app.runtime.preprocessor import DeterministicPreprocessor
 
-                class SmallProxyNet(nn.Module):
-                    def __init__(self):
-                        super().__init__()
-                        self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
-                        self.pool = nn.MaxPool2d(2, 2)
-                        self.conv2 = nn.Conv2d(16, 32, 3, padding=1)
-                        self.fc = nn.Linear(32 * 8 * 8, 10)
+        tensor, _, _ = DeterministicPreprocessor.preprocess_image(image, input_spec)
+        out = adapter.predict(tensor)
+        return cls._score(out)
 
-                    def forward(self, x):
-                        x = self.pool(torch.relu(self.conv1(x)))
-                        x = self.pool(torch.relu(self.conv2(x)))
-                        x = torch.flatten(x, 1)
-                        return self.fc(x)
-
-                torch.manual_seed(42)
-                net = SmallProxyNet()
-                net.eval()
-                cls._proxy_net = net
-            except Exception:
-                cls._proxy_net = False
-        return cls._proxy_net
+    @staticmethod
+    def _occluded(
+        image: Image.Image,
+        box: Tuple[int, int, int, int],
+        fill: Tuple[int, int, int],
+    ) -> Image.Image:
+        variant = image.copy()
+        variant.paste(fill, box)
+        return variant
 
     @classmethod
-    def compute_saliency_anomaly(cls, image_path: str) -> Optional[Dict[str, Any]]:
-        """Returns saliency anomaly details if a localized patch disproportionately influences output."""
+    def compute_saliency_anomaly(
+        cls,
+        image_path: str,
+        adapter: Optional[Any] = None,
+        grid: int = 2,
+        min_ratio: float = 3.0,
+        min_z: float = 2.0,
+        min_relative_shift: float = 0.02,
+    ) -> Optional[Dict[str, Any]]:
+        """Return localized-influence details, or None when unavailable/insignificant.
+
+        Args:
+            image_path: Sample to analyse.
+            adapter: A loaded real model adapter. None means UNAVAILABLE.
+            grid: Grid resolution per axis. Cost is (grid*grid + 1) forward passes,
+                so the default 2 keeps this to 6 passes per image.
+            min_ratio: Localized signal must exceed the mean of the other cells by this factor.
+            min_z: Same signal expressed in standard deviations above the other cells.
+            min_relative_shift: Signal must move the model output by at least this
+                fraction of the base output magnitude, so numerically large but
+                negligible shifts on high-magnitude outputs do not qualify.
+        """
+        if adapter is None:
+            return None
+        if grid < 2:
+            raise ValueError("grid must be >= 2 to have a comparison population")
+
         try:
-            with Image.open(image_path) as img:
-                rgb = img.convert("RGB").resize((32, 32), resample=Image.Resampling.BILINEAR)
-                arr = np.array(rgb, dtype=np.float32) / 255.0
+            schema = adapter.input_schema()
+            if not schema:
+                return None
+            input_spec = schema[0]
 
-            net = cls.get_proxy_net()
-            if net and net is not False:
-                import torch
-                tensor = torch.tensor(arr.transpose(2, 0, 1), dtype=torch.float32).unsqueeze(0)
-                with torch.no_grad():
-                    logits = net(tensor)
-                    probs = torch.softmax(logits, dim=1)[0]
-                    top_class = int(torch.argmax(probs).item())
-                    base_prob = float(probs[top_class].item())
+            with Image.open(image_path) as raw:
+                base_image = raw.convert("RGB")
 
-                    # 4x4 grid occlusion (each cell is 8x8 in 32x32 image)
-                    drops = []
-                    grid_coords = []
-                    for r in range(4):
-                        for c in range(4):
-                            occ_tensor = tensor.clone()
-                            occ_tensor[0, :, r * 8 : (r + 1) * 8, c * 8 : (c + 1) * 8] = 0.5
-                            occ_logits = net(occ_tensor)
-                            occ_prob = float(torch.softmax(occ_logits, dim=1)[0, top_class].item())
-                            drop = max(0.0, base_prob - occ_prob)
-                            drops.append(drop)
-                            grid_coords.append((r, c))
+            base_score = cls._run(adapter, base_image, input_spec)
+            if base_score is None:
+                return None
 
-                    drops_arr = np.array(drops, dtype=np.float32)
-                    mean_drop = float(np.mean(drops_arr))
-                    std_drop = float(np.std(drops_arr))
-                    max_idx = int(np.argmax(drops_arr))
-                    max_drop = float(drops_arr[max_idx])
-                    best_r, best_c = grid_coords[max_idx]
+            w, h = base_image.size
+            fill = tuple(int(round(c)) for c in np.array(base_image).reshape(-1, 3).mean(axis=0))
+            cell_w, cell_h = max(1, w // grid), max(1, h // grid)
 
-                    if std_drop > 1e-4 and mean_drop > 1e-4:
-                        ratio = max_drop / (mean_drop + 1e-6)
-                        z_score = (max_drop - mean_drop) / (std_drop + 1e-6)
-                    else:
-                        ratio = 1.0
-                        z_score = 0.0
+            # Equal-area control perturbation, placed deterministically from the path
+            # hash so repeated runs are reproducible.
+            seed = int(hash_bytes(image_path.encode("utf-8"))[:8], 16)
+            rng = np.random.default_rng(seed)
+            ctrl_r = int(rng.integers(0, grid))
+            ctrl_c = int(rng.integers(0, grid))
+            control_box = (
+                ctrl_c * cell_w,
+                ctrl_r * cell_h,
+                min(w, (ctrl_c + 1) * cell_w),
+                min(h, (ctrl_r + 1) * cell_h),
+            )
+            control_score = cls._run(adapter, cls._occluded(base_image, control_box, fill), input_spec)
+            if control_score is None:
+                return None
+            control_drop = max(0.0, base_score - control_score)
 
-                    if ratio >= 3.0 and z_score >= 2.2 and max_drop >= 0.12:
-                        return {
-                            "grid_cell": [best_r, best_c],
-                            "saliency_ratio": round(ratio, 4),
-                            "z_score": round(z_score, 4),
-                            "max_drop": round(max_drop, 4),
-                            "mean_drop": round(mean_drop, 4),
-                            "method": "proxy_model_occlusion_sensitivity",
-                        }
+            signals: List[float] = []
+            coords: List[Tuple[int, int]] = []
+            for r in range(grid):
+                for c in range(grid):
+                    if (r, c) == (ctrl_r, ctrl_c):
+                        continue
+                    box = (c * cell_w, r * cell_h, min(w, (c + 1) * cell_w), min(h, (r + 1) * cell_h))
+                    score = cls._run(adapter, cls._occluded(base_image, box, fill), input_spec)
+                    if score is None:
+                        return None
+                    # Subtracting the control is what makes this a localization test
+                    # rather than a measure of the model's general fragility.
+                    signals.append(max(0.0, base_score - score) - control_drop)
+                    coords.append((r, c))
+
+            if not signals:
+                return None
+
+            arr = np.array(signals, dtype=np.float64)
+            best_idx = int(np.argmax(arr))
+            max_signal = float(arr[best_idx])
+            best_r, best_c = coords[best_idx]
+
+            others = np.delete(arr, best_idx)
+            mean_other = float(np.mean(others)) if others.size else 0.0
+            std_other = float(np.std(others)) if others.size else 0.0
+
+            magnitude = abs(base_score) + 1e-6
+            relative_shift = max_signal / magnitude
+
+            if std_other > 1e-9 and mean_other > 1e-9:
+                ratio = max_signal / (mean_other + 1e-9)
+                z_score = (max_signal - mean_other) / (std_other + 1e-9)
             else:
-                gray = np.mean(arr, axis=2)
-                energies = []
-                coords = []
-                for r in range(4):
-                    for c in range(4):
-                        block = gray[r * 8 : (r + 1) * 8, c * 8 : (c + 1) * 8]
-                        var = float(np.var(block))
-                        energies.append(var)
-                        coords.append((r, c))
-                energies_arr = np.array(energies, dtype=np.float32)
-                mean_e = float(np.mean(energies_arr))
-                std_e = float(np.std(energies_arr))
-                max_idx = int(np.argmax(energies_arr))
-                max_e = float(energies_arr[max_idx])
-                best_r, best_c = coords[max_idx]
-                if std_e > 1e-4 and mean_e > 1e-4:
-                    ratio = max_e / (mean_e + 1e-6)
-                    z_score = (max_e - mean_e) / (std_e + 1e-6)
-                    if ratio >= 4.0 and z_score >= 2.5 and max_e >= 0.08:
-                        return {
-                            "grid_cell": [best_r, best_c],
-                            "saliency_ratio": round(ratio, 4),
-                            "z_score": round(z_score, 4),
-                            "max_drop": round(max_e, 4),
-                            "mean_drop": round(mean_e, 4),
-                            "method": "numpy_energy_concentration",
-                        }
+                ratio = float("inf") if max_signal > 0 else 1.0
+                z_score = 0.0
+
+            if relative_shift < min_relative_shift:
+                return None
+            if ratio < min_ratio or z_score < min_z:
+                return None
+
+            return {
+                "grid_cell": [best_r, best_c],
+                "saliency_ratio": round(ratio, 4) if np.isfinite(ratio) else None,
+                "z_score": round(z_score, 4),
+                "max_drop": round(max_signal, 6),
+                "mean_drop": round(mean_other, 6),
+                "control_drop": round(control_drop, 6),
+                "base_score": round(base_score, 6),
+                "relative_shift": round(relative_shift, 6),
+                "grid": grid,
+                "probe_format": str(getattr(adapter, "format", "unknown")),
+                "probe_artifact_sha256": getattr(adapter, "artifact_hash", None),
+                "method": "model_occlusion_sensitivity_with_matched_control",
+            }
         except Exception:
-            pass
-        return None
+            return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -664,23 +723,30 @@ class ProxyOcclusionSaliencyAnalyzer:
 
 class TriggerCandidateDetector:
     """Detects recurring static patch patterns in corner and spatial regions, as well
-    as heuristic saliency anomalies via proxy occlusion sensitivity.
+    as localized-influence anomalies measured against a real probe model.
 
     Finding type: TRIGGER_CANDIDATE (not TRIGGER_BACKDOOR).
     Tags findings by mechanism:
-      - 'STATIC_PATCH': Repeated perceptual/exact patch patterns in corner or spatial sliding windows.
-      - 'HEURISTIC_SALIENCY_ANOMALY': Localized regions with abnormally high predictive influence
-        on a proxy model (heuristic proxy signal for optimized/imperceptible triggers).
+      - 'STATIC_PATCH': Repeated perceptual/exact patch patterns in corner or spatial
+        sliding windows. This is the load-bearing evidence and needs no model.
+      - 'HEURISTIC_SALIENCY_ANOMALY': Localized regions that move a real probe model's
+        output disproportionately versus an equal-area control perturbation elsewhere
+        in the same image. Requires an explicit probe model; without one this check
+        reports UNAVAILABLE and emits nothing.
 
     Coverage limitations:
     - Sliding window uses perceptual dHash and variance filtering.
-    - Saliency check uses proxy occlusion sensitivity; does not guarantee detection of
-      adversarially optimized or distributed triggers.
+    - Saliency triage requires an explicitly supplied probe model and is OFF by
+      default. It is also measured to be non-discriminative for small static patches
+      on a real object detector (see ProxyOcclusionSaliencyAnalyzer), so it is a
+      research aid, not a detector. It costs one forward pass per grid cell plus two.
+    - Neither check guarantees detection of adversarially optimized, distributed,
+      or input-dependent triggers.
     - A positive finding indicates a CANDIDATE requiring human review.
     """
 
     DETECTOR_ID = "TRIGGER_CANDIDATE_DETECTOR"
-    DETECTOR_VERSION = "2.1.0"
+    DETECTOR_VERSION = "2.2.0"
 
     def detect(
         self,
@@ -688,18 +754,24 @@ class TriggerCandidateDetector:
         patch_size: int = 4,
         enable_sliding_window: bool = True,
         enable_saliency_proxy: bool = True,
+        probe_adapter: Optional[Any] = None,
+        saliency_max_samples: int = 20,
     ) -> List[IntegrityFinding]:
         findings: List[IntegrityFinding] = []
         params = {
             "patch_size": patch_size,
             "enable_sliding_window": enable_sliding_window,
             "enable_saliency_proxy": enable_saliency_proxy,
+            "saliency_probe": getattr(probe_adapter, "format", None) and "configured" or "unavailable",
+            "saliency_max_samples": saliency_max_samples,
         }
 
         if len(samples) < 2:
             findings.extend(self._detect_isolated_trigger(samples, patch_size, params))
             if enable_saliency_proxy:
-                findings.extend(self._detect_saliency_anomalies(samples, params))
+                findings.extend(
+                    self._detect_saliency_anomalies(samples, params, probe_adapter, saliency_max_samples)
+                )
             return findings
 
         # Group samples by primary label class
@@ -797,9 +869,11 @@ class TriggerCandidateDetector:
                 )
                 findings.extend(spatial_findings)
 
-        # (2) Lightweight saliency-based check on proxy model
+        # (2) Localized-influence check against a real probe model, if one was supplied
         if enable_saliency_proxy:
-            findings.extend(self._detect_saliency_anomalies(samples, params))
+            findings.extend(
+                self._detect_saliency_anomalies(samples, params, probe_adapter, saliency_max_samples)
+            )
 
         return findings
 
@@ -952,55 +1026,98 @@ class TriggerCandidateDetector:
         self,
         samples: List[SampleRecord],
         params: Dict,
+        probe_adapter: Optional[Any] = None,
+        max_samples: int = 20,
     ) -> List[IntegrityFinding]:
-        """Detect localized regions with abnormally high predictive influence using proxy occlusion sensitivity."""
+        """Detect regions that move a real probe model's output disproportionately.
+
+        Emits nothing when no probe model is configured: that is UNAVAILABLE, and
+        reporting a finding from an untrained stand-in network would be fabrication.
+        Sample count is capped because each sample costs one forward pass per grid
+        cell plus two, and truncated coverage is stated on the finding rather than
+        being passed off as a complete scan.
+        """
         findings: List[IntegrityFinding] = []
-        for sample in samples:
-            anomaly = ProxyOcclusionSaliencyAnalyzer.compute_saliency_anomaly(sample.file_path)
-            if anomaly:
-                r, c = anomaly["grid_cell"]
-                ratio = anomaly["saliency_ratio"]
-                z = anomaly["z_score"]
-                findings.append(
-                    IntegrityFinding(
-                        finding_id=str(uuid.uuid4()),
-                        check_type=IntegrityCheckType.TRIGGER_CANDIDATE,
-                        severity=IntegritySeverity.HIGH,
-                        sample_ids=[sample.sample_id],
-                        description=(
-                            f"Heuristic saliency anomaly: localized spatial cell ({r}, {c}) exhibits abnormally high "
-                            f"predictive influence (saliency ratio {ratio:.2f}x mean, z-score {z:.2f}) on proxy model."
+        if probe_adapter is None:
+            return findings
+
+        total = len(samples)
+        considered = samples[:max_samples] if max_samples > 0 else []
+        truncated = total - len(considered)
+
+        for sample in considered:
+            anomaly = ProxyOcclusionSaliencyAnalyzer.compute_saliency_anomaly(
+                sample.file_path, adapter=probe_adapter
+            )
+            if not anomaly:
+                continue
+            r, c = anomaly["grid_cell"]
+            ratio = anomaly["saliency_ratio"]
+            z = anomaly["z_score"]
+            shift = anomaly.get("relative_shift")
+            ratio_text = "unbounded" if ratio is None else f"{ratio:.2f}x mean"
+            metric = float(z)
+            findings.append(
+                IntegrityFinding(
+                    finding_id=str(uuid.uuid4()),
+                    check_type=IntegrityCheckType.TRIGGER_CANDIDATE,
+                    severity=IntegritySeverity.HIGH,
+                    sample_ids=[sample.sample_id],
+                    description=(
+                        f"Localized-influence anomaly: spatial cell ({r}, {c}) moves the probe model's output "
+                        f"{shift:.2%} of base magnitude, against an equal-area control perturbation "
+                        f"(saliency ratio {ratio_text}, z-score {z:.2f})."
+                    ) if shift is not None else (
+                        f"Localized-influence anomaly: spatial cell ({r}, {c}) exceeds an equal-area control "
+                        f"perturbation (saliency ratio {ratio_text}, z-score {z:.2f})."
+                    ),
+                    metric_score=metric,
+                    trigger_tag=TriggerTag.HEURISTIC_SALIENCY_ANOMALY.value,
+                    details={
+                        "trigger_tag": TriggerTag.HEURISTIC_SALIENCY_ANOMALY.value,
+                        "detection_method": anomaly.get(
+                            "method", "model_occlusion_sensitivity_with_matched_control"
                         ),
-                        metric_score=float(ratio),
-                        trigger_tag=TriggerTag.HEURISTIC_SALIENCY_ANOMALY.value,
-                        details={
-                            "trigger_tag": TriggerTag.HEURISTIC_SALIENCY_ANOMALY.value,
-                            "detection_method": anomaly.get("method", "proxy_occlusion_sensitivity"),
-                            "grid_cell": [r, c],
-                            "saliency_ratio": ratio,
-                            "z_score": z,
-                            "max_drop": anomaly.get("max_drop"),
-                            "mean_drop": anomaly.get("mean_drop"),
-                        },
-                        detector_id=self.DETECTOR_ID,
-                        detector_version=self.DETECTOR_VERSION,
-                        detector_parameters=params,
-                        created_at=_now(),
-                        confidence=0.50,
-                        confidence_basis=(
-                            "Heuristic proxy-model occlusion sensitivity: localized cell accounts for >3x mean "
-                            "predictive influence; proxy signal only, not a ground-truth backdoor proof"
-                        ),
-                        limitations=(
-                            "Heuristic proxy signal only; does not guarantee detection of adversarially optimized, "
-                            "low-amplitude, or distributed triggers. Ground-truth confirmation requires analyst review."
-                        ),
-                        recommended_action=(
-                            "Human review required — inspect localized region under high-contrast or magnification "
-                            "to verify presence of trigger artifact"
-                        ),
-                    )
+                        "grid_cell": [r, c],
+                        "saliency_ratio": ratio,
+                        "z_score": z,
+                        "max_drop": anomaly.get("max_drop"),
+                        "mean_drop": anomaly.get("mean_drop"),
+                        "control_drop": anomaly.get("control_drop"),
+                        "base_score": anomaly.get("base_score"),
+                        "relative_shift": shift,
+                        "grid": anomaly.get("grid"),
+                        "probe_format": anomaly.get("probe_format"),
+                        "probe_artifact_sha256": anomaly.get("probe_artifact_sha256"),
+                        "saliency_samples_considered": len(considered),
+                        "saliency_samples_total": total,
+                        "saliency_samples_truncated": truncated,
+                        "coverage_complete": truncated == 0,
+                    },
+                    detector_id=self.DETECTOR_ID,
+                    detector_version=self.DETECTOR_VERSION,
+                    detector_parameters=params,
+                    created_at=_now(),
+                    confidence=None,
+                    confidence_basis=(
+                        "Not calibrated. The statistic measures one model's response to occlusion on one image "
+                        "and has no known mapping to backdoor probability. Thresholded heuristically; a "
+                        "positive result is a review lead, not a posterior."
+                    ),
+                    limitations=(
+                        f"Measured against a single probe model ({anomaly.get('probe_format')}), so it reflects "
+                        "that model's sensitivity and cannot generalise to the model the dataset actually targets. "
+                        "Coverage is " + ("complete" if truncated == 0 else f"partial ({truncated} of {total} samples not analysed)")
+                        + ". Does not detect adversarially optimized, low-amplitude, or distributed triggers. "
+                        "Cross-sample patch repetition, not per-image saliency, is the load-bearing evidence for "
+                        "dataset poisoning. Ground-truth confirmation requires analyst review."
+                    ),
+                    recommended_action=(
+                        "Human review required — inspect localized region under high-contrast or magnification "
+                        "to verify presence of trigger artifact"
+                    ),
                 )
+            )
         return findings
 
     def _detect_isolated_trigger(

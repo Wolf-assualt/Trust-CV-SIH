@@ -200,6 +200,8 @@ class DataIntegrityEngine:
         duplicate_threshold: int = 4,
         trigger_detection_enabled: bool = True,
         ood_reference_stats: Optional[dict] = None,
+        probe_adapter: Optional[object] = None,
+        saliency_max_samples: int = 20,
     ) -> DatasetIntegrityReport:
         """Run all integrity checks and synthesize an actionable integrity report."""
         findings: list[IntegrityFinding] = []
@@ -221,8 +223,16 @@ class DataIntegrityEngine:
         findings.extend(self.ood_detector.detect(manifest.samples, ood_reference_stats))
 
         # 5. Trigger Candidate Detection
+        # The saliency component needs a real probe model. Without one it reports
+        # UNAVAILABLE and emits nothing rather than substituting a stand-in network.
         if trigger_detection_enabled:
-            findings.extend(self.trigger_detector.detect(manifest.samples))
+            findings.extend(
+                self.trigger_detector.detect(
+                    manifest.samples,
+                    probe_adapter=probe_adapter,
+                    saliency_max_samples=saliency_max_samples,
+                )
+            )
 
         findings_by_sample: dict[str, list[IntegrityFinding]] = {sample.sample_id: [] for sample in manifest.samples}
         for finding in findings:
@@ -502,6 +512,58 @@ class DataIntegrityEngine:
             data = json.load(f)
 
         return DatasetIntegrityReport(**data)
+
+
+def resolve_saliency_probe(model_id_or_path: Optional[str]) -> Optional[object]:
+    """Load a real model to use as the occlusion probe for saliency triage.
+
+    Accepts either a registered model_id or a path to a model artifact. Returns a
+    loaded adapter, or None when the model cannot be resolved or executed locally.
+
+    None is the honest UNAVAILABLE answer. There is deliberately no fallback: an
+    occlusion response measured against an untrained stand-in network describes that
+    network's random initialisation, not any model under test, so it cannot support a
+    finding. Callers must treat None as "this check did not run".
+
+    Cost note: each saliency check costs one forward pass per grid cell plus two.
+    Callers should bound the sample count accordingly (see saliency_max_samples).
+    """
+    if not model_id_or_path:
+        return None
+
+    from app.models_engine.adapters.base import BaseModelAdapter
+    from app.models_engine.adapters.factory import ModelAdapterFactory
+
+    candidates: list[Path] = []
+
+    raw = Path(model_id_or_path)
+    if raw.is_file():
+        candidates.append(raw)
+    else:
+        # Not a path: treat as a registered model_id and read its manifest.
+        try:
+            from app.models_engine.registry import default_model_registry
+
+            manifest = default_model_registry.get_model(model_id_or_path)
+        except Exception:
+            manifest = None
+        if manifest is not None:
+            file_path = (manifest.metadata or {}).get("file_path")
+            if file_path:
+                candidates.append(Path(file_path))
+
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        try:
+            adapter = ModelAdapterFactory.get_adapter(candidate)
+            adapter.load()
+            if isinstance(adapter, BaseModelAdapter):
+                return adapter
+            adapter.close()
+        except Exception:
+            continue
+    return None
 
 
 default_integrity_engine = DataIntegrityEngine()
