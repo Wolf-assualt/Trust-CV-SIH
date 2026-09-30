@@ -84,38 +84,44 @@ class ModelRegistry:
         weights_hash: Optional[str] = None
         architecture_hash: Optional[str] = None
 
-        try:
-            # pyrefly: ignore [missing-import]
-            import torch
-            data = torch.load(str(path), map_location="cpu", weights_only=True)
-            if isinstance(data, dict):
-                state_dict = data.get("state_dict") or data.get("model") or data
-                if isinstance(state_dict, dict):
-                    # Per-layer hashing
-                    arch_entries = []  # name + shape only (structure)
-                    weight_entries = []  # name + shape + hash (content)
-                    for tensor_name in sorted(state_dict.keys()):
-                        tensor = state_dict[tensor_name]
-                        if hasattr(tensor, "detach"):
-                            t_np = tensor.detach().cpu().numpy()
-                            t_bytes = t_np.tobytes()
-                            t_hash = hash_bytes(t_bytes)
-                            t_shape = list(tensor.shape)
-                            t_count = int(tensor.numel())
-                            layers.append(ModelLayerInfo(
-                                name=tensor_name,
-                                shape=t_shape,
-                                sha256_hash=t_hash,
-                                param_count=t_count,
-                            ))
-                            arch_entries.append({"name": tensor_name, "shape": t_shape})
-                            weight_entries.append({"name": tensor_name, "hash": t_hash})
+        # Only a PyTorch state_dict can produce per-layer hashes. Measured against real
+        # artifacts: torch.load succeeds on a .pth checkpoint, and raises on an ONNX file
+        # (UnpicklingError) and on a TorchScript archive (RuntimeError), so the call was
+        # a no-op for every other format. Guarding on the format avoids importing torch
+        # (~3s) when registering an ONNX model, which is the common upload path.
+        if format == ModelFormat.PYTORCH_WEIGHTS:
+            try:
+                # pyrefly: ignore [missing-import]
+                import torch
+                data = torch.load(str(path), map_location="cpu", weights_only=True)
+                if isinstance(data, dict):
+                    state_dict = data.get("state_dict") or data.get("model") or data
+                    if isinstance(state_dict, dict):
+                        # Per-layer hashing
+                        arch_entries = []  # name + shape only (structure)
+                        weight_entries = []  # name + shape + hash (content)
+                        for tensor_name in sorted(state_dict.keys()):
+                            tensor = state_dict[tensor_name]
+                            if hasattr(tensor, "detach"):
+                                t_np = tensor.detach().cpu().numpy()
+                                t_bytes = t_np.tobytes()
+                                t_hash = hash_bytes(t_bytes)
+                                t_shape = list(tensor.shape)
+                                t_count = int(tensor.numel())
+                                layers.append(ModelLayerInfo(
+                                    name=tensor_name,
+                                    shape=t_shape,
+                                    sha256_hash=t_hash,
+                                    param_count=t_count,
+                                ))
+                                arch_entries.append({"name": tensor_name, "shape": t_shape})
+                                weight_entries.append({"name": tensor_name, "hash": t_hash})
 
-                    architecture_hash = canonical_json_hash({"layers": arch_entries})
-                    weights_hash = canonical_json_hash({"weights": weight_entries})
-        except Exception:
-            # Non-PyTorch format — hashes remain None (set from identity_digest below)
-            pass
+                        architecture_hash = canonical_json_hash({"layers": arch_entries})
+                        weights_hash = canonical_json_hash({"weights": weight_entries})
+            except Exception:
+                # Not a readable state_dict — hashes remain None (set from identity_digest below)
+                pass
 
         identity_payload = {
             "name": name,
