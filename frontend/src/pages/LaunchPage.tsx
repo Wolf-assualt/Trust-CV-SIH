@@ -16,32 +16,19 @@ export const LaunchPage: React.FC = () => {
       initial="hidden"
       animate="visible"
       variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-      style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}
+      style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}
     >
       <motion.section variants={sectionVariants}>
         <HeroSection />
       </motion.section>
 
       <motion.section variants={sectionVariants}>
-        <div style={{ marginBottom: '16px' }}>
-          <h2
-            style={{
-              fontSize: '20px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.01em',
-              margin: 0,
-            }}
-          >
+        <div className="section-head">
+          <span className="eyebrow">Ingestion</span>
+          <h2 className="section-head__title">
             Real-Time Surveillance Stream & Forensic Ingestion
           </h2>
-          <p
-            style={{
-              fontSize: '14px',
-              color: 'var(--text-secondary)',
-              margin: '4px 0 0 0',
-            }}
-          >
+          <p className="section-head__sub">
             Continuous live camera feed monitoring, zero-trust frame verification, and forensic artifact ingestion.
           </p>
         </div>
@@ -55,19 +42,10 @@ export const LaunchPage: React.FC = () => {
 
       {/* Subdued system performance strip — benchmark presentation data only */}
       <motion.section variants={sectionVariants}>
-        <div style={{ marginBottom: '16px' }}>
-          <h2
-            style={{
-              fontSize: '20px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.01em',
-              margin: 0,
-            }}
-          >
-            System Performance
-          </h2>
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+        <div className="section-head">
+          <span className="eyebrow">Benchmarks</span>
+          <h2 className="section-head__title">System Performance</h2>
+          <p className="section-head__sub">
             Benchmark measurements from the verification harness.
           </p>
         </div>

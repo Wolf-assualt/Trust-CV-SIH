@@ -47,26 +47,21 @@ export const HeroSection: React.FC = () => {
       }}
     >
       <div style={{ position: 'relative' }}>
-        <h1
-          style={{
-            fontSize: '2.25rem',
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            letterSpacing: '-0.01em',
-            lineHeight: 1.2,
-            marginBottom: '12px',
-          }}
-        >
-          Establish Trust Before Inference.
+        <p className="eyebrow" style={{ marginBottom: 'var(--s-3)' }}>
+          Zero-Trust Computer Vision
+        </p>
+
+        <h1 className="hero-title">Establish Trust Before{' '}
+          <span className="accent-word">Inference.</span>
         </h1>
 
         <p
           style={{
-            fontSize: '15px',
+            fontSize: '14px',
             color: 'var(--text-secondary)',
-            maxWidth: '720px',
+            maxWidth: '640px',
             margin: '0 auto 32px auto',
-            lineHeight: 1.5,
+            lineHeight: 1.6,
           }}
         >
           Inspect computer-vision datasets, neural network weights, and inference outputs for
@@ -74,36 +69,27 @@ export const HeroSection: React.FC = () => {
           before deployment to mission-critical systems.
         </p>
 
-        {/* Static benchmark metrics — 24px semibold numbers, quiet labels below */}
+        {/* Static benchmark metrics — three equal bordered stat cards */}
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-            gap: '48px',
-            marginBottom: '32px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 'var(--s-4)',
+            maxWidth: '720px',
+            margin: '0 auto 32px',
+            textAlign: 'left',
           }}
         >
           {[
-            { label: 'Forensic pipeline stages', value: '13' },
-            { label: 'P95 verify latency', value: '29.28ms' },
-            { label: 'Air-gap capable', value: '100%' },
+            { label: 'Pipeline stages', value: '13', unit: '' },
+            { label: 'P95 latency', value: '29.28', unit: 'ms' },
+            { label: 'Air-gap capable', value: '100', unit: '%' },
           ].map(metric => (
-            <div key={metric.label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span
-                style={{
-                  fontSize: '24px',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  letterSpacing: '-0.01em',
-                  lineHeight: 1.2,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
+            <div key={metric.label} className="stat-card">
+              <span className="stat-card__label">{metric.label}</span>
+              <span className="stat-card__value">
                 {metric.value}
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                {metric.label}
+                {metric.unit && <span className="stat-card__unit">{metric.unit}</span>}
               </span>
             </div>
           ))}
@@ -126,7 +112,15 @@ export const HeroSection: React.FC = () => {
               aria-label={`Jump to ${pill.label} artifact`}
             >
               {pill.icon}
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '10px',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-secondary)',
+                }}
+              >
                 {pill.label}
               </span>
             </button>

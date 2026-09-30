@@ -14,8 +14,8 @@ export const SignalMap: React.FC = () => {
   return (
     <div
       style={{
-        backgroundColor: 'var(--surface)',
-        border: '1px solid var(--border)',
+        backgroundColor: 'var(--terminal-surface)',
+        border: '1px solid var(--terminal-border)',
         borderRadius: '12px',
         padding: '20px 24px',
         display: 'flex',
@@ -40,13 +40,13 @@ export const SignalMap: React.FC = () => {
             style={{
               fontSize: '0.875rem',
               fontWeight: 600,
-              color: 'var(--text-primary)',
+              color: 'var(--terminal-text)',
               margin: 0,
             }}
           >
             Integrity Signal Map (Latent Feature Space)
           </h3>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '12px', color: 'var(--terminal-muted)', margin: '4px 0 0 0' }}>
             Visual embedding cluster deviation separating nominal data from backdoor triggers
           </p>
         </div>
@@ -54,20 +54,20 @@ export const SignalMap: React.FC = () => {
         {/* Legend */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent)', opacity: 0.7 }} />
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--terminal-accent-text)', opacity: 0.7 }} />
+            <span style={{ fontSize: '12px', color: 'var(--terminal-text)' }}>
               Normal ({normalCount.toLocaleString()})
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--warning)', opacity: 0.8 }} />
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--terminal-text)' }}>
               OOD ({oodCount.toLocaleString()})
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--critical)', opacity: 0.8 }} />
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--terminal-text)' }}>
               Poisoned ({poisonedCount.toLocaleString()})
             </span>
           </div>
@@ -109,7 +109,7 @@ export const SignalMap: React.FC = () => {
           {signalPoints.map(pt => {
             const isPoisoned = pt.status === 'poisoned';
             const isOod = pt.status === 'ood';
-            const color = isPoisoned ? 'var(--critical)' : isOod ? 'var(--warning)' : 'var(--accent)';
+            const color = isPoisoned ? 'var(--critical)' : isOod ? 'var(--warning)' : 'var(--terminal-accent-text)';
             const r = isPoisoned ? 4.5 : isOod ? 3.5 : 2.5;
 
             return (
@@ -144,7 +144,7 @@ export const SignalMap: React.FC = () => {
                   ? 'var(--critical-border)'
                   : hoveredPoint.status === 'ood'
                   ? 'var(--warning-border)'
-                  : 'var(--border)'
+                  : 'var(--terminal-border)'
               }`,
               borderRadius: '0.375rem',
               padding: '8px 12px',
@@ -154,7 +154,7 @@ export const SignalMap: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <strong className="font-mono" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{hoveredPoint.sampleId}</strong>
+              <strong className="font-mono" style={{ color: 'var(--terminal-text)', fontWeight: 500 }}>{hoveredPoint.sampleId}</strong>
               <Badge
                 variant={
                   hoveredPoint.status === 'poisoned'
@@ -168,10 +168,10 @@ export const SignalMap: React.FC = () => {
                 {hoveredPoint.status}
               </Badge>
             </div>
-            <div style={{ color: 'var(--text-secondary)' }}>
-              Anomaly score: <strong className="font-mono" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{hoveredPoint.score.toFixed(3)}</strong>
+            <div style={{ color: 'var(--terminal-text)' }}>
+              Anomaly score: <strong className="font-mono" style={{ color: 'var(--terminal-text)', fontWeight: 500 }}>{hoveredPoint.score.toFixed(3)}</strong>
             </div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+            <div style={{ color: 'var(--terminal-muted)', fontSize: '11px' }}>
               Subspace: {hoveredPoint.cluster}
             </div>
           </div>

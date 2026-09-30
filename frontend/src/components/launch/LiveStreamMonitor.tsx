@@ -787,9 +787,9 @@ export const LiveStreamMonitor: React.FC = () => {
           {/* Live Decision Card */}
           <div
             style={{
-              backgroundColor: 'var(--surface)',
+              backgroundColor: 'var(--terminal-bg)',
               border: `1px solid ${
-                isTriggerActive ? '#ef4444' : 'var(--border)'
+                isTriggerActive ? '#ef4444' : 'var(--terminal-border)'
               }`,
               borderRadius: '12px',
               padding: '18px 20px',
@@ -799,10 +799,10 @@ export const LiveStreamMonitor: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--terminal-text)' }}>
                 ZERO-TRUST VERDICT
               </span>
-              <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--terminal-muted)' }}>
                 CYCLE: {fpsIntervalMs}ms
               </span>
             </div>
@@ -836,7 +836,7 @@ export const LiveStreamMonitor: React.FC = () => {
                 >
                   {activeFrame ? activeFrame.verdict : 'WAITING FOR STREAM'}
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--terminal-muted)' }}>
                   {activeFrame
                     ? activeFrame.evidence_summary
                     : 'Click "Start Live Analysis" to begin continuous verification.'}
@@ -851,29 +851,29 @@ export const LiveStreamMonitor: React.FC = () => {
                 gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '8px',
                 paddingTop: '10px',
-                borderTop: '1px solid var(--border)',
+                borderTop: '1px solid var(--terminal-border)',
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Frames Scanned</span>
-                <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                <span style={{ fontSize: '11px', color: 'var(--terminal-muted)' }}>Frames Scanned</span>
+                <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--terminal-text)' }}>
                   {stats.total}
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Poison Alerts</span>
+                <span style={{ fontSize: '11px', color: 'var(--terminal-muted)' }}>Poison Alerts</span>
                 <span
                   style={{
                     fontSize: '16px',
                     fontWeight: 600,
-                    color: stats.poisoned > 0 ? '#ef4444' : 'var(--text-primary)',
+                    color: stats.poisoned > 0 ? '#ef4444' : 'var(--terminal-text)',
                   }}
                 >
                   {stats.poisoned}
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Avg Latency</span>
+                <span style={{ fontSize: '11px', color: 'var(--terminal-muted)' }}>Avg Latency</span>
                 <span style={{ fontSize: '16px', fontWeight: 600, color: '#38bdf8' }}>
                   {avgLatency} ms
                 </span>
@@ -884,8 +884,8 @@ export const LiveStreamMonitor: React.FC = () => {
           {/* Cryptographic Hash Ledger Card */}
           <div
             style={{
-              backgroundColor: 'var(--surface)',
-              border: '1px solid var(--border)',
+              backgroundColor: 'var(--terminal-surface)',
+              border: '1px solid var(--terminal-border)',
               borderRadius: '12px',
               padding: '16px 20px',
               display: 'flex',
@@ -894,26 +894,26 @@ export const LiveStreamMonitor: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Lock size={15} style={{ color: 'var(--text-secondary)' }} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <Lock size={15} style={{ color: 'var(--terminal-text)' }} />
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--terminal-text)' }}>
                 Frame Cryptographic Digest
               </span>
             </div>
             <div
               style={{
-                backgroundColor: 'var(--bg-primary)',
+                backgroundColor: 'var(--terminal-bg)',
                 padding: '10px 12px',
                 borderRadius: '6px',
-                border: '1px solid var(--border)',
+                border: '1px solid var(--terminal-border)',
                 fontFamily: 'monospace',
                 fontSize: '11px',
-                color: 'var(--text-secondary)',
+                color: 'var(--terminal-text)',
                 wordBreak: 'break-all',
               }}
             >
               {activeFrame?.sha256_hash ?? 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
             </div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: '11px', color: 'var(--terminal-muted)' }}>
               Computed in Python via SHA-256 for zero-trust stream tamper-detection.
             </span>
           </div>
@@ -923,8 +923,8 @@ export const LiveStreamMonitor: React.FC = () => {
       {/* Bottom: Live Stream Filmstrip & Audit Table */}
       <div
         style={{
-          backgroundColor: 'var(--surface)',
-          border: '1px solid var(--border)',
+          backgroundColor: 'var(--terminal-surface)',
+          border: '1px solid var(--terminal-border)',
           borderRadius: '12px',
           padding: '18px 20px',
           display: 'flex',
@@ -934,16 +934,16 @@ export const LiveStreamMonitor: React.FC = () => {
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity size={16} style={{ color: 'var(--text-secondary)' }} />
-            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            <Activity size={16} style={{ color: 'var(--terminal-text)' }} />
+            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--terminal-text)' }}>
               Live Stream Forensic Audit Filmstrip
             </span>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--terminal-muted)' }}>
               (Last {recentFrames.length} captured frames)
             </span>
           </div>
 
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--terminal-text)' }}>
             Pipeline Latency: ~1 ms per frame
           </span>
         </div>
@@ -953,9 +953,9 @@ export const LiveStreamMonitor: React.FC = () => {
             style={{
               padding: '24px',
               textAlign: 'center',
-              color: 'var(--text-muted)',
+              color: 'var(--terminal-muted)',
               fontSize: '13px',
-              border: '1px dashed var(--border)',
+              border: '1px dashed var(--terminal-border)',
               borderRadius: '8px',
             }}
           >
@@ -982,9 +982,9 @@ export const LiveStreamMonitor: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     style={{
-                      backgroundColor: 'var(--bg-primary)',
+                      backgroundColor: 'var(--terminal-bg)',
                       border: `1px solid ${
-                        isPoisoned ? '#ef4444' : 'var(--border)'
+                        isPoisoned ? '#ef4444' : 'var(--terminal-border)'
                       }`,
                       borderRadius: '8px',
                       overflow: 'hidden',

@@ -1,0 +1,862 @@
+/* ==========================================================================
+   TRUST-CV — Shell & component surfaces
+   --------------------------------------------------------------------------
+   Warm paper, deep forest green, hairline borders. No gradients, glows,
+   glassmorphism or drop shadows: separation comes from 1px lines and the
+   4/8/12/16/24/32 spacing scale defined in tokens.css.
+   ========================================================================== */
+
+/* ── Footer — three quiet columns, tiny uppercase mono ────────────────────*/
+.footer {
+  grid-area: foot;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-8);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.footer__col {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.footer__col--end {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.footer__col svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.footer__rule {
+  width: 1px;
+  height: 10px;
+  background-color: var(--border);
+}
+
+/* ── Shell ────────────────────────────────────────────────────────────────
+   Named areas keep the sidebar + top bar stable while the page area flexes. */
+.shell {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'top top'
+    'side main'
+    'side foot';
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+}
+
+.shell__main {
+  grid-area: main;
+  min-width: 0;
+}
+
+.shell__content {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--s-6) var(--s-8) var(--s-8);
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────────*/
+.topbar {
+  grid-area: top;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  height: 56px;
+  padding: 0 var(--s-6);
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar__left,
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.topbar__left {
+  gap: var(--s-3);
+}
+
+/* Square control — one shape for every icon button in the app */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0;
+  background-color: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-btn);
+  cursor: pointer;
+  transition: background-color var(--ease), border-color var(--ease),
+    color var(--ease);
+}
+
+.icon-btn:hover {
+  background-color: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.breadcrumb__sep {
+  /* A separator still has to be readable — a hairline colour as type lands
+     around 1.6:1 on white. */
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+/* Search trigger: icon + label + keycap chip */
+.search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  height: 36px;
+  padding: 0 var(--s-3);
+  background-color: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-btn);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--ease), border-color var(--ease),
+    color var(--ease);
+}
+
+.search-btn:hover {
+  background-color: var(--surface-hover);
+  border-color: var(--accent-border);
+  color: var(--text-primary);
+}
+
+.search-btn__label {
+  font-weight: 500;
+}
+
+.keychip {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────*/
+.sidebar {
+  grid-area: side;
+  position: sticky;
+  top: 56px;
+  align-self: start;
+  height: calc(100vh - 56px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  padding: var(--s-6) var(--s-4);
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.sidebar__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  background-color: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+}
+
+.sidebar__wordmark {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sidebar__name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+/* Bordered "active case" info card */
+.case-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+}
+
+.case-card__id {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.case-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* Nav — active row is a raised white plate with a 3px green left bar */
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: var(--r-btn);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ease), border-color var(--ease),
+    color var(--ease);
+}
+
+.nav-row:hover {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.nav-row--active {
+  background-color: var(--surface);
+  border-left-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.nav-row__num {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.nav-row--active .nav-row__num {
+  color: var(--accent-text);
+}
+
+.nav-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.nav-row__label {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.nav-row__desc {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__foot {
+  margin-top: auto;
+  padding-top: var(--s-4);
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+}
+
+.user-chip__dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--success);
+}
+
+.user-chip__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.user-chip__name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Static status dot — colour carries the state, never motion */
+.status-dot {
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--success);
+}
+
+/* The running state is a hairline ring, not a glow. */
+.status-dot--live {
+  background-color: var(--accent-text);
+  border: 1px solid var(--accent-border);
+}
+
+.shell__scrim {
+  display: none;
+}
+
+/* ── Segmented control (phase strip / mode tabs) ────────────────────────────*/
+.segmented {
+  display: flex;
+  gap: var(--s-1);
+  padding: var(--s-1);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+}
+
+.segmented__tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  flex: 1;
+  min-width: 0;
+  padding: var(--s-2) var(--s-3);
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--r-btn);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ease), color var(--ease);
+}
+
+.segmented__tab:hover {
+  color: var(--text-primary);
+}
+
+/* Icon + label variant of a segment (mode tabs), centred and auto-width. */
+.segmented__tab--inline {
+  flex: 0 1 auto;
+  justify-content: center;
+  padding: var(--s-2) var(--s-3);
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.segmented__tab--active {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.segmented__num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.segmented__tab--active .segmented__num {
+  color: var(--accent-text);
+}
+
+.segmented__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.segmented__label {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.segmented__desc {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Page hero — one serif display size per breakpoint ────────────────────*/
+.hero-title {
+  margin: 0 0 var(--s-3);
+  font-family: var(--font-serif);
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+/* ── Section header — eyebrow, serif title, muted subtitle ────────────────*/
+.section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin-bottom: var(--s-4);
+}
+
+.section-head__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.section-head__sub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ── Stat card — three equal bordered plates ──────────────────────────────*/
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-4) var(--s-4);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+}
+
+.stat-card__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stat-card__value {
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-card__unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: var(--s-1);
+}
+
+.stat-card__foot {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* ── Selectable option card ──────────────────────────────────────────────*/
+.option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-4);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ease), border-color var(--ease);
+}
+
+.option-card:hover {
+  border-color: var(--border-strong);
+  background-color: var(--surface-hover);
+}
+
+.option-card--active {
+  background-color: var(--accent-surface);
+  border-color: var(--accent);
+}
+
+.option-card__tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--accent-text);
+}
+
+/* ── Mono data rows — tight density ──────────────────────────────────────*/
+.data-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+
+.data-row:last-child {
+  border-bottom: none;
+}
+
+.data-row__key {
+  color: var(--text-secondary);
+}
+
+.data-row__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  text-align: right;
+  word-break: break-all;
+}
+
+/* ── Feature chip ────────────────────────────────────────────────────────*/
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 3px var(--s-2);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ── Command palette ──────────────────────────────────────────────────────
+   A dialog, so it keeps the same hairline card language as everything else.
+   The backdrop is a flat scrim — no blur, no vignette.                       */
+.cp-backdrop {
+  background-color: rgba(30, 42, 36, 0.32);
+}
+
+.cp-dialog {
+  padding: 0;
+  overflow: hidden;
+}
+
+.cp-input {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.cp-input__icon {
+  display: inline-flex;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cp-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.cp-input input::placeholder {
+  color: var(--text-muted);
+}
+
+/* The whole row tints on focus so the target is obvious without a glow. */
+.cp-input:focus-within {
+  background-color: var(--accent-surface);
+}
+
+.cp-section-label {
+  padding: var(--s-2) var(--s-3) var(--s-1);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cp-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-btn);
+  font-family: var(--font-sans);
+  text-align: left;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color var(--ease), color var(--ease);
+}
+
+.cp-item:hover {
+  background-color: var(--surface-hover);
+}
+
+/* Active row: tinted plate plus a 3px green left bar, matching the nav rows. */
+.cp-item[data-active='true'] {
+  background-color: var(--accent-surface);
+  color: var(--accent-text);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.cp-item__icon {
+  display: inline-flex;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cp-item[data-active='true'] .cp-item__icon {
+  color: var(--accent-text);
+}
+
+.cp-item__hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-8) var(--s-4);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.cp-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-2) var(--s-4);
+  border-top: 1px solid var(--border);
+  background-color: var(--surface-elevated);
+}
+
+.cp-footer__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Focus: 2px teal-green ring ───────────────────────────────────────────*/
+button:focus-visible,
+[role='button']:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+.command-palette__input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Drawer behaviour ───────────────────────────────────────────────────*/
+@media (max-width: 1023px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'top'
+      'main'
+      'foot';
+  }
+
+  /* The drawer now spans the full remaining height, footer included. */
+  .sidebar {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    width: 268px;
+    /* An explicit height is required here: the drawer is a grid child, and a
+       `bottom: 0` stretch is not honoured for out-of-flow grid items. */
+    height: calc(100vh - 56px);
+    z-index: 55;
+    transform: translateX(-100%);
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    border-right: 1px solid var(--border);
+  }
+
+  .sidebar--open {
+    transform: translateX(0);
+  }
+
+  .shell__scrim {
+    display: block;
+    position: fixed;
+    top: 56px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 54;
+    background-color: rgba(30, 42, 36, 0.28);
+  }
+}
+
+/* ── Small screens ──────────────────────────────────────────────────────*/
+@media (max-width: 767px) {
+  .shell__content {
+    padding: var(--s-4) var(--s-4) var(--s-8);
+  }
+
+  .topbar {
+    padding: 0 var(--s-4);
+  }
+
+  /* Label collapses; the icon still identifies the control. */
+  .search-btn__label {
+    display: none;
+  }
+
+  .section-head__title {
+    font-size: 19px;
+  }
+
+  .hero-title {
+    font-size: 27px;
+  }
+
+  .stat-card__value {
+    font-size: 22px;
+  }
+
+  .segmented {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 479px) {
+  .keychip {
+    display: none;
+  }
+
+  .hero-title {
+    font-size: 24px;
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .sidebar {
+    transition: none !important;
+  }
+}

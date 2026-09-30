@@ -67,10 +67,11 @@ export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({
 }) => (
   <h3
     style={{
-      fontSize: '14px',
-      fontWeight: 600,
+      fontFamily: 'var(--font-serif)',
+      fontSize: '15px',
+      fontWeight: 500,
       color: 'var(--text-primary)',
-      letterSpacing: 0,
+      letterSpacing: '-0.01em',
       margin: 0,
       ...style,
     }}

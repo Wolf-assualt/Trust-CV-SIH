@@ -28,7 +28,7 @@ export const TerminalLog: React.FC = () => {
         ? 'var(--warning-text)'
         : level === 'PASS'
         ? 'var(--success-text)'
-        : 'var(--text-muted)';
+        : 'var(--terminal-muted)';
     return (
       <span
         style={{
@@ -48,7 +48,7 @@ export const TerminalLog: React.FC = () => {
     <div
       style={{
         backgroundColor: 'var(--terminal-bg)',
-        border: '1px solid var(--border)',
+        border: '1px solid var(--terminal-border)',
         borderRadius: '12px',
         display: 'flex',
         flexDirection: 'column',
@@ -60,20 +60,20 @@ export const TerminalLog: React.FC = () => {
       <div
         style={{
           padding: '12px 16px',
-          backgroundColor: 'var(--surface)',
-          borderBottom: '1px solid var(--border)',
+          backgroundColor: 'var(--terminal-surface)',
+          borderBottom: '1px solid var(--terminal-border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Terminal size={14} strokeWidth={1.5} style={{ color: 'var(--text-muted)' }} />
+          <Terminal size={14} strokeWidth={1.5} style={{ color: 'var(--terminal-muted)' }} />
           <span
             style={{
               fontSize: '12px',
               fontWeight: 500,
-              color: 'var(--text-primary)',
+              color: 'var(--terminal-text)',
             }}
           >
             Live Forensic Audit Telemetry Stream
@@ -82,7 +82,7 @@ export const TerminalLog: React.FC = () => {
             className="font-mono"
             style={{
               fontSize: '11px',
-              color: 'var(--text-muted)',
+              color: 'var(--terminal-muted)',
             }}
           >
             ({terminalLogs.length} events)
@@ -99,9 +99,9 @@ export const TerminalLog: React.FC = () => {
                 padding: '0.15rem 0.5rem',
                 fontSize: '11px',
                 border: '1px solid',
-                borderColor: filterLevel === lvl ? 'var(--accent-border)' : 'var(--border)',
-                backgroundColor: filterLevel === lvl ? 'var(--accent-surface)' : 'transparent',
-                color: filterLevel === lvl ? 'var(--accent-text)' : 'var(--text-secondary)',
+                borderColor: filterLevel === lvl ? 'var(--terminal-accent-border)' : 'var(--terminal-border)',
+                backgroundColor: filterLevel === lvl ? 'var(--terminal-accent-surface)' : 'transparent',
+                color: filterLevel === lvl ? 'var(--terminal-accent-text)' : 'var(--terminal-text)',
                 borderRadius: '0.25rem',
                 cursor: 'pointer',
                 fontWeight: 500,
@@ -117,9 +117,9 @@ export const TerminalLog: React.FC = () => {
             style={{
               padding: '0.15rem 0.5rem',
               fontSize: '11px',
-              border: '1px solid var(--border)',
-              backgroundColor: autoScroll ? 'var(--surface-active)' : 'transparent',
-              color: autoScroll ? 'var(--text-primary)' : 'var(--text-muted)',
+              border: '1px solid var(--terminal-border)',
+              backgroundColor: autoScroll ? 'var(--terminal-surface-active)' : 'transparent',
+              color: autoScroll ? 'var(--terminal-text)' : 'var(--terminal-muted)',
               borderRadius: '0.25rem',
               cursor: 'pointer',
               display: 'flex',
@@ -147,7 +147,7 @@ export const TerminalLog: React.FC = () => {
         }}
       >
         {filteredLogs.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', padding: '16px 0' }}>
+          <div style={{ color: 'var(--terminal-muted)', padding: '16px 0' }}>
             Awaiting kernel initialization events...
           </div>
         ) : (
@@ -161,7 +161,7 @@ export const TerminalLog: React.FC = () => {
                 marginBottom: '4px',
               }}
             >
-              <span style={{ color: 'var(--text-muted)', userSelect: 'none', minWidth: '65px' }}>
+              <span style={{ color: 'var(--terminal-muted)', userSelect: 'none', minWidth: '65px' }}>
                 [{log.timestamp.includes('T') ? log.timestamp.split('T')[1].slice(0, 8) : log.timestamp}]
               </span>
               {getLevelBadge(log.level)}

@@ -1,4 +1,5 @@
 @import './theme/globals.css';
+@import './shell.css';
 @import './mobile.css';
 
 #root {
@@ -8,12 +9,12 @@
   width: 100%;
 }
 
-/* ── Card surface — flat, 1px border, no blur, no inner glow ────────────── */
+/* ── Card surface — hairline border, no shadow, no glow ─────────────────── */
 .glass-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--ease);
 }
 
 .glass-card:hover {
@@ -52,22 +53,22 @@
   to { transform: rotate(360deg); }
 }
 
-/* ── Hero capability pills — quiet outlined buttons ─────────────────────── */
+/* ── Hero capability chips — quiet mono pills ───────────────────────────── */
 .hero-pill {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 999px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color var(--ease), background-color var(--ease);
 }
 
 .hero-pill:hover {
-  background: var(--surface-elevated);
-  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
 }
 
 /* ── Tooltip (CSS-only, explains disabled CTA) ──────────────────────────── */
@@ -117,13 +118,14 @@
 .provenance-node {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
+  gap: var(--s-1);
+  padding: 3px var(--s-2);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -135,303 +137,3 @@
   flex-shrink: 0;
 }
 
-/* ── Tinted glass pills (header search trigger + theme toggle) ────────────
-   Each control carries its own tint: the search trigger uses the single blue
-   accent, the theme toggle a violet. Tints stay low-alpha so the muted SOC
-   palette is preserved; the surface only warms up on hover.               */
-.ctl-pill {
-  --ctl-tint: var(--accent);
-  --ctl-soft: var(--accent-surface);
-  --ctl-line: var(--accent-border);
-  --ctl-ink: var(--accent-text);
-
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4375rem;
-  padding: 0.4375rem 0.6875rem;
-  border-radius: 999px;
-  background-color: var(--surface);
-  background-image: linear-gradient(
-    180deg,
-    var(--ctl-soft) 0%,
-    transparent 100%
-  );
-  border: 1px solid var(--border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
-}
-
-.ctl-pill:hover {
-  background-color: var(--surface-elevated);
-  border-color: var(--ctl-line);
-  color: var(--ctl-ink);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 0 3px var(--ctl-soft),
-    0 6px 16px -8px var(--ctl-tint);
-  transform: translateY(-1px);
-}
-
-.ctl-pill:active {
-  transform: translateY(0) scale(0.98);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-/* Icon sits in a tinted chip so the glyph reads as the active affordance */
-.ctl-pill__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: -2px;
-  border-radius: 50%;
-  background-color: var(--ctl-soft);
-  color: var(--ctl-ink);
-  flex-shrink: 0;
-  transition: background-color 0.18s ease, color 0.18s ease, transform 0.25s ease;
-}
-
-.ctl-pill:hover .ctl-pill__icon {
-  background-color: var(--ctl-line);
-  transform: rotate(-12deg) scale(1.08);
-}
-
-.ctl-pill__label {
-  font-weight: 500;
-  letter-spacing: -0.005em;
-}
-
-/* ⌘K / ESC keycap chip */
-.ctl-kbd {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  line-height: 1.5;
-  color: var(--text-muted);
-  background-color: var(--surface-elevated);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0 5px;
-  transition: color 0.18s ease, border-color 0.18s ease;
-}
-
-.ctl-pill:hover .ctl-kbd {
-  color: var(--ctl-ink);
-  border-color: var(--ctl-line);
-}
-
-/* Theme toggle gets its own violet identity */
-.ctl-pill--theme {
-  --ctl-tint: #8b5cf6;
-  --ctl-soft: rgba(139, 92, 246, 0.12);
-  --ctl-line: rgba(139, 92, 246, 0.38);
-  --ctl-ink: #a78bfa;
-}
-
-[data-theme='light'] .ctl-pill--theme {
-  --ctl-tint: #7c3aed;
-  --ctl-soft: rgba(124, 58, 237, 0.1);
-  --ctl-line: rgba(124, 58, 237, 0.32);
-  --ctl-ink: #6d28d9;
-}
-
-/* ── Command palette — dimmed backdrop + tinted input row ───────────────── */
-.cp-backdrop {
-  background:
-    radial-gradient(
-      120% 80% at 50% 0%,
-      rgba(59, 130, 246, 0.1) 0%,
-      transparent 60%
-    ),
-    rgba(5, 6, 8, 0.62);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-}
-
-[data-theme='light'] .cp-backdrop {
-  background:
-    radial-gradient(
-      120% 80% at 50% 0%,
-      rgba(37, 99, 235, 0.12) 0%,
-      transparent 60%
-    ),
-    rgba(23, 24, 27, 0.34);
-}
-
-.cp-dialog {
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow:
-    0 24px 60px -12px rgba(0, 0, 0, 0.55),
-    0 0 0 1px var(--accent-surface);
-}
-
-.cp-input {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.9375rem 1.0625rem;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--accent-surface), transparent);
-  transition: box-shadow 0.2s ease;
-}
-
-.cp-input:focus-within {
-  box-shadow: inset 0 -1px 0 0 var(--accent);
-}
-
-.cp-input__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background-color: var(--accent-surface);
-  border: 1px solid var(--accent-border);
-  color: var(--accent-text);
-  flex-shrink: 0;
-}
-
-.cp-section-label {
-  padding: 0.5rem 0.75rem 0.25rem;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.cp-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.6875rem;
-  padding: 0.5625rem 0.625rem;
-  background: transparent;
-  border: none;
-  border-radius: 0.5rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  text-align: left;
-  position: relative;
-  transition: background-color 0.12s ease, color 0.12s ease;
-}
-
-.cp-item:hover {
-  background-color: var(--surface-hover);
-}
-
-.cp-item[data-active='true'] {
-  background: var(--accent-surface);
-  color: var(--accent-text);
-}
-
-/* Accent bar marking the keyboard cursor */
-.cp-item[data-active='true']::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 2px;
-  height: 18px;
-  border-radius: 0 2px 2px 0;
-  background: var(--accent);
-  transform: translateY(-50%);
-}
-
-.cp-item__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  color: inherit;
-  flex-shrink: 0;
-  transition: border-color 0.12s ease, background-color 0.12s ease;
-}
-
-.cp-item[data-active='true'] .cp-item__icon {
-  border-color: var(--accent-border);
-  background-color: var(--surface-elevated);
-}
-
-.cp-item__hint {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.0625rem 0.3125rem;
-  white-space: nowrap;
-}
-
-.cp-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1.75rem 1rem;
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  text-align: center;
-}
-
-.cp-footer {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 0.875rem;
-  border-top: 1px solid var(--border);
-  background-color: var(--surface-elevated);
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.cp-footer__hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3125rem;
-}
-
-/* ── Focus rings: single blue accent ────────────────────────────────────── */
-button:focus-visible,
-[role='button']:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-.command-palette__input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* ── Reduced motion ─────────────────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  .skeleton::after {
-    animation: none !important;
-  }
-  .ctl-pill,
-  .ctl-pill__icon {
-    transition: none !important;
-  }
-  .ctl-pill:hover,
-  .ctl-pill:active,
-  .ctl-pill:hover .ctl-pill__icon {
-    transform: none !important;
-  }
-}

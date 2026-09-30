@@ -23,7 +23,6 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [isActive, setIsActive] = useState(false);
 
   const getVariantStyles = (): React.CSSProperties => {
     if (disabled) {
@@ -74,10 +73,12 @@ export const Button: React.FC<ButtonProps> = ({
         };
       case 'secondary':
       default:
+        // White plate with a green hairline — the quiet counterpart to primary.
         return {
-          backgroundColor: isHovered ? 'var(--surface-hover)' : 'var(--surface-elevated)',
-          borderColor: isHovered ? 'var(--border-strong)' : 'var(--border)',
-          color: 'var(--text-primary)',
+          backgroundColor: isHovered ? 'var(--surface-hover)' : 'var(--surface)',
+          borderColor: isHovered ? 'var(--accent)' : 'var(--accent-border)',
+          color: 'var(--accent-text)',
+          fontWeight: 500,
         };
     }
   };
@@ -86,25 +87,25 @@ export const Button: React.FC<ButtonProps> = ({
     switch (size) {
       case 'sm':
         return {
-          padding: '0.35rem 0.75rem',
-          fontSize: '0.8125rem',
-          borderRadius: '0.375rem',
-          gap: '0.375rem',
+          padding: '6px 12px',
+          fontSize: '13px',
+          borderRadius: '8px',
+          gap: '6px',
         };
       case 'lg':
         return {
-          padding: '0.625rem 1.25rem',
-          fontSize: '0.9375rem',
-          borderRadius: '0.5rem',
-          gap: '0.5rem',
+          padding: '12px 16px',
+          fontSize: '14px',
+          borderRadius: '9px',
+          gap: '8px',
         };
       case 'md':
       default:
         return {
-          padding: '0.5rem 1rem',
-          fontSize: '0.875rem',
-          borderRadius: '0.375rem',
-          gap: '0.5rem',
+          padding: '8px 16px',
+          fontSize: '14px',
+          borderRadius: '9px',
+          gap: '8px',
         };
     }
   };
@@ -113,12 +114,7 @@ export const Button: React.FC<ButtonProps> = ({
     <button
       disabled={disabled || isLoading}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setIsActive(false);
-      }}
-      onMouseDown={() => setIsActive(true)}
-      onMouseUp={() => setIsActive(false)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -127,7 +123,6 @@ export const Button: React.FC<ButtonProps> = ({
         borderStyle: 'solid',
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
-        transform: disabled ? 'none' : isActive ? 'scale(0.99)' : 'none',
         userSelect: 'none',
         whiteSpace: 'nowrap',
         ...getSizeStyles(),

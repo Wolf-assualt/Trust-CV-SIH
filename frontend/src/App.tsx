@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { InvestigationProvider, useInvestigation } from './state/investigationStore';
 import { Header } from './components/layout/Header';
 import { PhaseStepper } from './components/layout/PhaseStepper';
+import { Footer } from './components/layout/Footer';
 import { LaunchPage } from './pages/LaunchPage';
 import { ScanPage } from './pages/ScanPage';
 import { ResultsPage } from './pages/ResultsPage';
@@ -12,12 +13,13 @@ const MultiPhaseSocView: React.FC = () => {
   const { phase } = useInvestigation();
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
+    <div className="shell">
       <Header />
-      <PhaseStepper />
 
-      <main style={{ flex: 1, width: '100%', position: 'relative' }}>
-        <div style={{ width: '100%', maxWidth: '1680px', margin: '0 auto', minHeight: '100%', padding: '0 1.5rem 3rem' }}>
+      <main className="shell__main">
+        <div className="shell__content">
+          <PhaseStepper />
+
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={phase}
@@ -33,6 +35,8 @@ const MultiPhaseSocView: React.FC = () => {
           </AnimatePresence>
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 };

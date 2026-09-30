@@ -96,13 +96,13 @@ export const ScanHeader: React.FC = () => {
             </span>
             {currentScanId && (
               <>
-                <span style={{ color: 'var(--border-strong)', fontSize: '12px' }}>·</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>·</span>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                   Scan: <strong className="font-mono" style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{currentScanId.substring(0, 8)}…</strong>
                 </span>
               </>
             )}
-            <span style={{ color: 'var(--border-strong)', fontSize: '12px' }}>·</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>·</span>
             <span
               style={{
                 fontSize: '12px',
