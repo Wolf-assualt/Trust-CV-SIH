@@ -146,55 +146,31 @@ export const Header: React.FC = () => {
 
         <button
           onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '0.45rem 0.75rem',
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: '0.375rem',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '12px',
-            transition: 'border-color 0.15s ease, color 0.15s ease',
-          }}
+          className="ctl-pill"
           aria-label="Open command palette"
           title="Open command palette (⌘K)"
         >
-          <Command size={14} strokeWidth={1.5} />
-          <span className="font-mono">⌘K</span>
+          <span className="ctl-pill__icon">
+            <Command size={14} strokeWidth={1.75} />
+          </span>
+          <span className="ctl-pill__label">Search</span>
+          <span className="ctl-kbd">⌘K</span>
         </button>
 
         <button
           onClick={toggleTheme}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '0.45rem 0.75rem',
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: '0.375rem',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '12px',
-            transition: 'border-color 0.15s ease, color 0.15s ease',
-          }}
+          className="ctl-pill ctl-pill--theme"
           aria-label="Toggle Light and Dark Theme"
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
         >
-          {theme === 'dark' ? (
-            <>
-              <Sun size={14} strokeWidth={1.5} />
-              <span style={{ fontWeight: 500 }}>Light</span>
-            </>
-          ) : (
-            <>
-              <Moon size={14} strokeWidth={1.5} />
-              <span style={{ fontWeight: 500 }}>Dark</span>
-            </>
-          )}
+          <span className="ctl-pill__icon">
+            {theme === 'dark' ? (
+              <Sun size={14} strokeWidth={1.75} />
+            ) : (
+              <Moon size={14} strokeWidth={1.75} />
+            )}
+          </span>
+          <span className="ctl-pill__label">{theme === 'dark' ? 'Light' : 'Dark'}</span>
         </button>
       </div>
 

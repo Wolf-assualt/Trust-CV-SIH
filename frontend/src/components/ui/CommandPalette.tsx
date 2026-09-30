@@ -158,15 +158,14 @@ export const CommandPalette: React.FC = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={close}
+            className="cp-backdrop"
             style={{
               position: 'fixed',
               inset: 0,
               zIndex: 10000,
-              backgroundColor: 'rgba(5, 6, 8, 0.6)',
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'center',
-              paddingTop: '14vh',
               padding: '14vh 1.5rem 1.5rem 1.5rem',
             }}
           >
@@ -178,26 +177,18 @@ export const CommandPalette: React.FC = () => {
               onClick={e => e.stopPropagation()}
               role="dialog"
               aria-label="Command palette"
-              className="glass-card"
+              className="glass-card cp-dialog"
               style={{
                 width: '100%',
                 maxWidth: '560px',
-                borderRadius: '12px',
-                overflow: 'hidden',
                 borderColor: 'var(--border-strong)',
               }}
             >
               {/* Search input */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.625rem',
-                  padding: '0.875rem 1rem',
-                  borderBottom: '1px solid var(--border)',
-                }}
-              >
-                <Search size={16} strokeWidth={1.5} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <div className="cp-input">
+                <span className="cp-input__icon">
+                  <Search size={15} strokeWidth={1.75} />
+                </span>
                 <input
                   ref={inputRef}
                   value={query}
@@ -219,58 +210,67 @@ export const CommandPalette: React.FC = () => {
                     fontFamily: 'inherit',
                   }}
                 />
-                <kbd
-                  className="font-mono"
-                  style={{
-                    fontSize: '0.625rem',
-                    color: 'var(--text-muted)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0.25rem',
-                    padding: '0.125rem 0.375rem',
-                  }}
-                >
-                  ESC
-                </kbd>
+                {query && (
+                  <span
+                    style={{
+                      fontSize: '0.6875rem',
+                      color: 'var(--text-muted)',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    {filtered.length} result{filtered.length === 1 ? '' : 's'}
+                  </span>
+                )}
+                <span className="ctl-kbd">ESC</span>
               </div>
 
               {/* Command list */}
               <div ref={listRef} style={{ padding: '0.375rem', maxHeight: '320px', overflowY: 'auto' }}>
-                {filtered.length === 0 && (
-                  <div style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                {filtered.length === 0 ? (
+                  <div className="cp-empty">
+                    <Search size={20} strokeWidth={1.5} style={{ opacity: 0.5 }} />
                     No matching commands
                   </div>
+                ) : (
+                  <>
+                    <div className="cp-section-label">
+                      {query ? 'Matches' : 'Commands'}
+                    </div>
+                    {filtered.map((item, i) => (
+                      <button
+                        key={item.id}
+                        data-active={i === activeIndex}
+                        onClick={() => runCommand(item)}
+                        onMouseEnter={() => setActiveIndex(i)}
+                        className="cp-item"
+                      >
+                        <span className="cp-item__icon">{item.icon}</span>
+                        <span style={{ flex: 1, fontSize: '0.875rem', fontWeight: 500 }}>
+                          {item.label}
+                        </span>
+                        <span className="cp-item__hint">{item.hint}</span>
+                        {i === activeIndex && <CornerDownLeft size={12} style={{ opacity: 0.6 }} />}
+                      </button>
+                    ))}
+                  </>
                 )}
-                {filtered.map((item, i) => (
-                  <button
-                    key={item.id}
-                    data-active={i === activeIndex}
-                    onClick={() => runCommand(item)}
-                    onMouseEnter={() => setActiveIndex(i)}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.625rem 0.75rem',
-                      background:
-                        i === activeIndex
-                          ? 'var(--accent-surface)'
-                          : 'transparent',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      color: i === activeIndex ? 'var(--accent-text)' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span style={{ display: 'inline-flex', flexShrink: 0 }}>{item.icon}</span>
-                    <span style={{ flex: 1, fontSize: '0.875rem', fontWeight: 500 }}>{item.label}</span>
-                    <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-                      {item.hint}
-                    </span>
-                    {i === activeIndex && <CornerDownLeft size={12} style={{ opacity: 0.6 }} />}
-                  </button>
-                ))}
+              </div>
+
+              {/* Footer hints */}
+              <div className="cp-footer">
+                <span className="cp-footer__hint">
+                  <kbd className="ctl-kbd">↑</kbd>
+                  <kbd className="ctl-kbd">↓</kbd>
+                  navigate
+                </span>
+                <span className="cp-footer__hint">
+                  <kbd className="ctl-kbd">↵</kbd>
+                  run
+                </span>
+                <span className="cp-footer__hint">
+                  <kbd className="ctl-kbd">esc</kbd>
+                  close
+                </span>
               </div>
             </motion.div>
           </motion.div>

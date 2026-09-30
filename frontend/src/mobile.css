@@ -83,8 +83,9 @@
   }
 
   /* Icon-only the command-palette + theme buttons (no room for labels) */
-  header button[aria-label="Open command palette"] span,
-  header button[aria-label="Toggle Light and Dark Theme"] span:not([style*="width"]) {
+  header button[aria-label="Open command palette"] .ctl-pill__label,
+  header button[aria-label="Open command palette"] .ctl-kbd,
+  header button[aria-label="Toggle Light and Dark Theme"] .ctl-pill__label {
     display: none;
   }
 
