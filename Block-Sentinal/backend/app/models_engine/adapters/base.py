@@ -73,6 +73,49 @@ class BaseModelAdapter(ABC):
         """
         pass
 
+    def batch_size(self) -> Optional[int]:
+        """Return the model's fixed leading batch dimension, or None if it accepts any batch.
+
+        Most exported vision models declare a hard batch dim of 1 (`(1, 3, 640, 640)`),
+        so only 1 is reported as fixed. A leading dimension greater than 1 is deliberately
+        NOT trusted: schemas inferred from a raw state_dict (rather than a real graph) can
+        carry a channel count in that slot, and treating it as a batch size would reject
+        perfectly valid inputs. Dynamic batch axes arrive as None/str and report None.
+        """
+        try:
+            specs = self.input_schema()
+        except Exception:
+            return None
+        for spec in specs or []:
+            shape = getattr(spec, "shape", None)
+            if not shape:
+                continue
+            try:
+                lead = int(shape[0])
+            except (TypeError, ValueError):
+                continue
+            return 1 if lead == 1 else None
+        return None
+
+    def predict_batch(self, inputs: np.ndarray) -> np.ndarray:
+        """Run inference over a batch of samples, honouring a fixed batch dimension.
+
+        Tries the whole batch first and falls back to per-sample forward passes if the
+        runtime rejects the leading dimension, then concatenates. Callers therefore see the
+        same leading sample axis either way, and no declared shape has to be trusted up
+        front. Single-sample inputs are always a direct call.
+        """
+        inputs = np.asarray(inputs)
+        if inputs.shape[0] <= 1:
+            return self.predict(inputs)
+        try:
+            return self.predict(inputs)
+        except Exception:
+            # Model rejected the batch dimension (or the batch size); one at a time.
+            pass
+        outputs = [self.predict(inputs[i : i + 1]) for i in range(inputs.shape[0])]
+        return np.concatenate([np.asarray(o) for o in outputs], axis=0)
+
     @abstractmethod
     def fingerprint(self) -> Dict[str, Any]:
         """Extract structural/internal parameter fingerprint."""

@@ -21,6 +21,40 @@ from app.schemas.fingerprint import (
 )
 
 
+def summarise_prediction(outputs: np.ndarray) -> tuple:
+    """Reduce a raw model output to (mean_confidence, top_class_id) for fingerprinting.
+
+    A model's head is not guaranteed to emit probabilities. A classifier typically emits
+    an already-normalised (N, C) score vector, but a detector such as YOLOv8 emits
+    (N, 84, anchors) of raw logits plus box coordinates, where a plain max() is hundreds
+    and is not a confidence at all. Normalising over the class axis via softmax is
+    well-defined for both shapes and keeps the value inside [0, 1], which is what the
+    PerturbationResult schema requires.
+    """
+    outputs = np.asarray(outputs, dtype=np.float64)
+    if outputs.ndim <= 1:
+        flat = outputs.reshape(-1)
+        return float(np.clip(np.mean(flat), 0.0, 1.0)), 0
+
+    # Class axis is 1 for both (N, C) and (N, attrs, anchors); box coords live on it
+    # for detector heads, so softmax over it is the only in-range reading available.
+    class_axis = 1
+    already_probs = bool(
+        np.all(outputs >= 0.0)
+        and np.allclose(outputs.sum(axis=class_axis), 1.0, atol=1e-3)
+    )
+    if already_probs:
+        probs = outputs
+    else:
+        shifted = outputs - np.max(outputs, axis=class_axis, keepdims=True)
+        exp = np.exp(shifted)
+        probs = exp / np.sum(exp, axis=class_axis, keepdims=True)
+
+    mean_conf = float(np.clip(np.mean(np.max(probs, axis=class_axis)), 0.0, 1.0))
+    top_class_id = int(np.argmax(np.mean(probs, axis=0)))
+    return mean_conf, top_class_id
+
+
 class ModelExecutor:
     """Executes real local inference via model adapters, removing surrogate simulations."""
 
@@ -79,7 +113,7 @@ class ModelExecutor:
         adapter = self.resolve_adapter(model)
         batch_arr = np.array(image_batch)
         try:
-            probs = adapter.predict(batch_arr)
+            probs = adapter.predict_batch(batch_arr)
         except RuntimeError as exc:
             if ("PYTORCH_RUNTIME_UNAVAILABLE" in str(exc) or "GENERIC_BINARY_RUNTIME_UNAVAILABLE" in str(exc)) and hasattr(adapter, "_synthetic_forward"):
                 probs = adapter._synthetic_forward(batch_arr)
@@ -159,7 +193,7 @@ class BehaviouralFingerprinter:
 
             if adapter_is_real and adapter is not None:
                 try:
-                    outputs = adapter.predict(np.array(perturbed))
+                    outputs = adapter.predict_batch(np.array(perturbed))
                 except RuntimeError as exc:
                     exc_str = str(exc)
                     if (
@@ -185,8 +219,7 @@ class BehaviouralFingerprinter:
             }
 
             output_digest = hash_bytes(outputs.tobytes())
-            mean_conf = float(np.mean(np.max(outputs, axis=1))) if outputs.ndim > 1 else float(np.mean(outputs))
-            top_class_id = int(np.argmax(np.mean(outputs, axis=0))) if outputs.ndim > 1 else 0
+            mean_conf, top_class_id = summarise_prediction(outputs)
 
             results.append(
                 PerturbationResult(

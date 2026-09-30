@@ -73,15 +73,15 @@ class TriggerDetector:
         try:
             # 1. Clean inference
             clean_batch = np.array(probes)
-            clean_preds = adapter.predict(clean_batch)
+            clean_preds = adapter.predict_batch(clean_batch)
 
             # 2. Triggered inference
             trig_probes = [cls.apply_corner_trigger(p) for p in probes]
-            trig_preds = adapter.predict(np.array(trig_probes))
+            trig_preds = adapter.predict_batch(np.array(trig_probes))
 
             # 3. Noise control inference
             noise_probes = [cls.apply_matched_noise(p) for p in probes]
-            noise_preds = adapter.predict(np.array(noise_probes))
+            noise_preds = adapter.predict_batch(np.array(noise_probes))
 
         except Exception as exc:
             return (
