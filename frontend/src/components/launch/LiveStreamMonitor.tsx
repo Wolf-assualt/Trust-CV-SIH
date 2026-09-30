@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   ShieldCheck,
   ShieldAlert,
-  Zap,
   RotateCcw,
   Bug,
   Activity,
@@ -16,7 +15,7 @@ import {
   CheckCircle2,
   Lock,
 } from 'lucide-react';
-import { apiService, type StreamFrameResponse, type StreamTriggerPatch } from '../../services/api';
+import { apiService, type StreamFrameResponse } from '../../services/api';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 
@@ -29,7 +28,9 @@ export const LiveStreamMonitor: React.FC = () => {
   const [feedMode, setFeedMode] = useState<'webcam' | 'simulated'>('simulated');
   const [injectPoison, setInjectPoison] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [fpsIntervalMs, setFpsIntervalMs] = useState<number>(500); // 2 FPS
+  // Fixed poll cadence for the live feed. Held in state so the interval and the
+  // displayed "CYCLE" readout stay in sync, but never changed at runtime.
+  const [fpsIntervalMs] = useState<number>(500); // 2 FPS
 
   const [activeFrame, setActiveFrame] = useState<StreamFrameResponse | null>(null);
   const [recentFrames, setRecentFrames] = useState<FrameWithThumb[]>([]);
@@ -386,7 +387,7 @@ export const LiveStreamMonitor: React.FC = () => {
                   {isTriggerActive ? 'ATTACK DETECTED' : 'LIVE STREAM ACTIVE'}
                 </Badge>
               ) : (
-                <Badge variant="outline" size="sm">
+                <Badge variant="default" size="sm">
                   STREAM PAUSED
                 </Badge>
               )}
@@ -615,7 +616,8 @@ export const LiveStreamMonitor: React.FC = () => {
 
               {/* DETECTED TRIGGER PATCH BOUNDING BOX */}
               {activeFrame?.trigger_patches?.map((patch, idx) => {
-                const [y1, x1, y2, x2] = patch.box;
+                // box is [y1, x1, y2, x2]; the box is sized from patch.size below.
+                const [y1, x1] = patch.box;
                 const scaleX = 100 / 640;
                 const scaleY = 100 / 480;
                 const leftPct = x1 * scaleX;
