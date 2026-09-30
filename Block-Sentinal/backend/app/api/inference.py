@@ -15,7 +15,6 @@ from app.crypto.canonical import canonical_json_hash, hash_bytes, hash_file
 from app.inference.dna import default_dna_generator
 from app.inference.verifier import InferenceDNAVerifier
 from app.models_engine.adapters.factory import ModelAdapterFactory
-from app.models_engine.fixtures import generate_real_onnx_model
 from app.models_engine.registry import default_model_registry
 from app.schemas.base import ResponseEnvelope
 from app.schemas.inference import (

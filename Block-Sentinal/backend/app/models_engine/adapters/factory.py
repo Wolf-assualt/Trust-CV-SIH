@@ -6,11 +6,13 @@ import numpy as np
 
 from app.models_engine.adapters.base import BaseModelAdapter
 from app.models_engine.adapters.blackbox_adapter import BlackBoxAdapter
-from app.models_engine.adapters.generic_binary_adapter import GenericBinaryAdapter
 from app.models_engine.adapters.onnx_adapter import ONNXAdapter
-from app.models_engine.adapters.pytorch_adapter import PyTorchAdapter
-from app.models_engine.adapters.torchscript_adapter import TorchScriptAdapter
 from app.schemas.model import ModelFormat
+
+# PyTorchAdapter and TorchScriptAdapter are imported lazily inside the branches that
+# need them. Both do `import torch` at module level, and torch costs seconds to import;
+# keeping it out of this module means an ONNX-only workflow never pays for it. This
+# module is reached from the model upload path, so the saving is user-visible.
 
 
 class ModelAdapterFactory:
@@ -76,8 +78,12 @@ class ModelAdapterFactory:
         if fmt == ModelFormat.ONNX:
             return ONNXAdapter(path)
         elif fmt == ModelFormat.TORCHSCRIPT:
+            from app.models_engine.adapters.torchscript_adapter import TorchScriptAdapter
+
             return TorchScriptAdapter(path)
         elif fmt in (ModelFormat.PYTORCH_WEIGHTS, "PYTORCH"):
+            from app.models_engine.adapters.pytorch_adapter import PyTorchAdapter
+
             return PyTorchAdapter(path)
         elif fmt == ModelFormat.GENERIC_BINARY:
             # Check if it's actually an ONNX, TorchScript, or PyTorch binary despite the name
@@ -88,18 +94,24 @@ class ModelAdapterFactory:
             except Exception:
                 pass
             try:
+                from app.models_engine.adapters.torchscript_adapter import TorchScriptAdapter
+
                 adapter = TorchScriptAdapter(path)
                 adapter.load()
                 return adapter
             except Exception:
                 pass
             try:
+                from app.models_engine.adapters.pytorch_adapter import PyTorchAdapter
+
                 adapter = PyTorchAdapter(path)
                 adapter.load()
                 return adapter
             except Exception:
                 pass
             # Safely fall back to GenericBinaryAdapter for static integrity assurance
+            from app.models_engine.adapters.generic_binary_adapter import GenericBinaryAdapter
+
             return GenericBinaryAdapter(path)
         else:
             raise ValueError(f"UNSUPPORTED_FORMAT: Model format {fmt} is not safely supported locally.")
