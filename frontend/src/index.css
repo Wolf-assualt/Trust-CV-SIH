@@ -1,5 +1,4 @@
 @import './theme/globals.css';
-@import './mobile.css';
 
 #root {
   min-height: 100vh;
